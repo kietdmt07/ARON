@@ -9,7 +9,7 @@
 *{box-sizing:border-box}html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 .wrap{max-width:1100px;margin:0 auto;padding:20px;display:grid;gap:16px}
-h1{font-size:22px;margin:0}h2{font-size:16px;margin:0 0 10px}
+h1{font-size:22px;margin:0}h2{font-size:16px;margin:0 0 10px}h3{font-size:15px;margin:10px 0 6px}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px}
 button,select,input,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px 10px}
@@ -24,6 +24,7 @@ button.sm{padding:4px 8px;font-size:13px}
 /* PLAYER */
 #player{position:fixed;inset:0;background:#000;color:#fff;z-index:9;display:flex;flex-direction:column;cursor:none;font-family:system-ui,"Segoe UI",sans-serif}
 #player[hidden]{display:none}
+#player-logo{position:absolute;top:2.5vw;right:2.5vw;max-height:10vh;max-width:25vw;z-index:10;object-fit:contain;filter:drop-shadow(0 2px 10px rgba(0,0,0,0.5));pointer-events:none}
 #stage{flex:1;position:relative;overflow:hidden}
 .sl{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:5vw;background-size:cover;background-position:center;animation:in .8s}
 @keyframes in{from{opacity:0;transform:scale(1.03)}to{opacity:1;transform:none}}
@@ -46,19 +47,30 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;backgr
 #side .m{font-size:1.5vw;padding:.7vw 1vw;background:rgba(255,255,255,.08);border-radius:.6vw}#side .m b{color:#ffd166;margin-right:.6vw}#side .m i{display:block;font-style:normal;opacity:.7;font-size:1.2vw}
 #side .n{margin-top:auto;font-size:1.6vw;white-space:pre-line}
 #pg{height:4px;background:#ffd166;width:0}
+dialog::backdrop{background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)}
+.cd-grid{display:flex;gap:1.5vw;justify-content:center;margin:1.5vw 0}
+.cd-box{background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.25);border-radius:1.2vw;padding:1vw 2vw;min-width:11vw;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,0.3)}
+.cd-num{display:block;font-size:6vw;font-weight:800;line-height:1.1;color:#ffd166;font-variant-numeric:tabular-nums;text-shadow:0 2px 10px rgba(0,0,0,0.4)}
+.cd-lbl{font-size:1.3vw;opacity:0.85;letter-spacing:2px;font-weight:600;margin-top:0.3vw;display:block}
 </style></head><body>
-<div class="wrap">
+<div class="wrap" id="main_wrap">
  <div class="row"><h1>📺 Màn hình truyền thông nội bộ</h1><span style="flex:1"></span>
+  <span id="user_badge" class="tag" style="font-size:13px;font-weight:bold;padding:4px 10px;background:var(--ac);color:#fff"></span>
   <button class="p" onclick="play()">▶ Phát toàn màn hình</button>
-  <button onclick="exp()">Xuất</button><button onclick="$('#imp').click()">Nhập</button><input id="imp" type="file" accept=".json" hidden></div>
- <div class="card"><div class="grid">
+  <button id="btn_users" onclick="openUserModal()">👥 User &amp; Phân quyền</button>
+  <button id="btn_change_pw" onclick="openChangePassModal()">🔑 Đổi mật khẩu</button>
+  <button id="btn_exp" onclick="exp()" style="display:none">Xuất</button><button id="btn_imp" onclick="$('#imp').click()" style="display:none">Nhập</button><input id="imp" type="file" accept=".json" hidden>
+  <button onclick="logout()" style="background:#ff4d4f;color:#fff;border-color:#ff4d4f">Đăng xuất</button>
+ </div>
+ <div class="card" id="settings_card"><div class="grid">
   <div><label>Tên công ty (hiện góc dưới)</label><input id="co_in"></div>
+  <div><label>Logo công ty (hiện góc màn hình)</label><input id="logo_in" type="file" accept="image/*"><div class="row" style="margin-top:4px"><span class="hint" id="logost"></span><button id="del_logo" class="sm" style="display:none" onclick="removeLogo()">Xóa logo</button></div></div>
   <div><label>Dòng chữ chạy (thông báo chung)</label><input id="tk_in"></div>
   <div><label>Bố cục màn hình</label><select id="lay"><option value="full">Toàn màn hình (1 vùng)</option><option value="side">Chia vùng: nội dung chính (70%) + cột bên phải (30%)</option></select></div>
   <div><label>Ghi chú ở cột bên phải (tùy chọn)</label><input id="sidenote" placeholder="VD: Wifi khách: Guest / 12345678"></div></div></div>
  <div class="grid">
   <div class="card"><h2>Danh sách trình chiếu</h2><div id="list"></div><p class="hint" id="empty">Chưa có nội dung. Hãy thêm ở bên phải.</p></div>
-  <div class="card"><h2 id="ft">Thêm nội dung</h2>
+  <div class="card" id="add_card"><h2 id="ft">Thêm nội dung</h2>
    <label>Loại</label><select id="type" onchange="fields()">
     <option value="welcome">👋 Chào đón khách</option><option value="meeting">📅 Lịch họp hôm nay</option>
     <option value="event">🎉 Banner sự kiện</option><option value="video">🎬 Video</option><option value="text">📢 Thông báo chữ</option><option value="countdown">⏳ Đếm ngược sự kiện</option><option value="clock">🕒 Đồng hồ &amp; ngày</option></select>
@@ -77,20 +89,265 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;backgr
    <div class="row" style="margin-top:12px"><button class="p" onclick="save()">Lưu</button><button onclick="reset()">Làm mới form</button></div>
   </div></div>
 </div>
-<div id="player" hidden><div id="pg"></div><div id="body"><div id="stage"></div><div id="side"></div></div>
+
+<!-- MODAL LOGIN OVERLAY -->
+<div id="login_overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:99;display:flex;align-items:center;justify-content:center;padding:20px">
+ <div class="card" style="width:100%;max-width:380px;box-shadow:0 12px 36px rgba(0,0,0,0.5)">
+  <h2 style="text-align:center;margin-bottom:16px">🔐 Đăng nhập Signage</h2>
+  <label>Tên đăng nhập</label>
+  <input id="l_u" placeholder="Tên đăng nhập">
+  <label style="margin-top:10px">Mật khẩu</label>
+  <input id="l_p" type="password" placeholder="Mật khẩu">
+  <div style="margin-top:18px;display:flex;gap:10px">
+   <button class="p" style="flex:1" onclick="login()">Đăng nhập</button>
+   <button onclick="loginTV()" style="background:#222;color:#fff;border-color:#444">📺 Chế độ Tivi</button>
+  </div>
+  <p id="l_err" style="color:#ff4d4f;font-size:13px;margin-top:12px;text-align:center;display:none"></p>
+ </div>
+</div>
+
+<!-- MODAL ĐỔI MẬT KHẨU CÁ NHÂN -->
+<dialog id="change_pass_modal" class="card" style="width:90%;max-width:380px;border:1px solid var(--bd);border-radius:12px;padding:20px;background:var(--card);color:var(--fg)">
+ <div class="row" style="margin-bottom:12px">
+  <h2 style="margin:0">🔑 Đổi mật khẩu cá nhân</h2><span style="flex:1"></span>
+  <button class="sm" onclick="$('#change_pass_modal').close()">✕ Đóng</button>
+ </div>
+ <div><label>Mật khẩu hiện tại</label><input id="old_pw" type="password" placeholder="Mật khẩu hiện tại"></div>
+ <div><label>Mật khẩu mới</label><input id="new_pw" type="password" placeholder="Mật khẩu mới"></div>
+ <div><label>Xác nhận mật khẩu mới</label><input id="confirm_pw" type="password" placeholder="Nhập lại mật khẩu mới"></div>
+ <button type="button" class="p" style="margin-top:16px;width:100%" onclick="changeMyPassword()">Lưu mật khẩu mới</button>
+</dialog>
+
+<!-- MODAL QUẢN LÝ USER & PHÂN QUYỀN -->
+<dialog id="user_modal" class="card" style="width:90%;max-width:550px;border:1px solid var(--bd);border-radius:12px;padding:20px;background:var(--card);color:var(--fg)">
+ <div class="row" style="margin-bottom:12px">
+  <h2 style="margin:0">👥 Quản lý người dùng &amp; Phân quyền</h2><span style="flex:1"></span>
+  <button class="sm" onclick="$('#user_modal').close()">✕ Đóng</button>
+ </div>
+ <div style="margin-bottom:16px">
+  <label style="font-weight:bold">Danh sách User hiện có:</label>
+  <div id="user_list_box" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"></div>
+ </div>
+ <hr style="border:0;border-top:1px solid var(--bd);margin:16px 0">
+ <h3>➕ Thêm User mới</h3>
+ <div class="grid" style="gap:10px;margin-bottom:10px">
+  <div><label>Tên đăng nhập</label><input id="new_u_name" placeholder="VD: nhanvien1"></div>
+  <div><label>Mật khẩu</label><input id="new_u_pass" type="password" placeholder="••••••"></div>
+ </div>
+ <div><label>Vai trò (Role / Quyền hạn)</label>
+  <select id="new_u_role">
+   <option value="admin">👑 Admin (Toàn quyền: Tạo, Sửa, Xóa, Quản lý User, Cài đặt)</option>
+   <option value="editor">✏️ Editor (Quyền Tạo mới &amp; Chỉnh sửa slide)</option>
+   <option value="creator">➕ Creator (Chỉ có quyền Tạo mới slide)</option>
+   <option value="viewer">📺 Viewer / Tivi (Chỉ xem trình chiếu, khóa hoàn toàn sửa)</option>
+  </select>
+ </div>
+ <button type="button" class="p" style="margin-top:12px;width:100%" onclick="addUser()">Thêm User mới</button>
+ <hr style="border:0;border-top:1px solid var(--bd);margin:16px 0">
+ <h3>🔒 Thiết lập Mã PIN Master Quản trị</h3>
+ <p class="hint">Dùng mã PIN này để mở khóa nhanh Tivi hoặc chỉnh sửa khi thoát toàn màn hình.</p>
+ <div class="row"><input id="master_pin_in" type="password" placeholder="Mã PIN mới (VD: 1234)" style="flex:1"><button type="button" onclick="changePin()">Lưu PIN</button></div>
+</dialog>
+
+<!-- MODAL KHÓA MÃ PIN TRÊN TIVI -->
+<dialog id="pin_modal" class="card" style="width:90%;max-width:340px;border:1px solid var(--bd);border-radius:12px;padding:20px;text-align:center;background:var(--card);color:var(--fg)">
+ <h3>🔒 Màn hình Tivi đang bị khóa</h3>
+ <p class="hint" style="font-size:13px;margin-bottom:12px">Nhập Mã PIN Quản trị để thoát chế độ phát hoặc mở quyền chỉnh sửa:</p>
+ <input id="unlock_pin" type="password" placeholder="Mã PIN" style="text-align:center;font-size:20px;letter-spacing:6px;margin-bottom:14px">
+ <div class="row" style="justify-content:center">
+  <button class="p" onclick="confirmUnlock()">Xác nhận</button>
+  <button onclick="$('#pin_modal').close()">Hủy</button>
+ </div>
+</dialog>
+
+<div id="player" hidden><img id="player-logo" hidden><div id="pg"></div><div id="body"><div id="stage"></div><div id="side"></div></div>
  <div id="bar"><span id="co"></span><span id="tk"><span></span></span><span id="clock"></span></div></div>
+
 <script>
 const $=s=>document.querySelector(s),esc=t=>String(t||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const KINDS={birthday:['🎂','Chúc mừng sinh nhật','#ff7eb3,#ff758c'],kickoff:['🚀','Khởi động dự án','#4facfe,#00c6fb'],golive:['✅','Chúc mừng Go-live','#43e97b,#1a9e8f'],client:['🤝','Chào đón khách hàng mới','#fa709a,#f6a623'],team:['🏕️','Team building','#f093fb,#7b5cf0'],trip:['🏖️','Nghỉ dưỡng','#30cfd0,#330867'],sport:['⚽','Sự kiện thể thao','#f7971e,#e0412f'],other:['🎉','Thông báo','#667eea,#764ba2']};
 const LBL={welcome:'Chào khách',meeting:'Lịch họp',event:'Sự kiện',video:'Video',text:'Thông báo',countdown:'Đếm ngược',clock:'Đồng hồ'};
-let S={company:'',ticker:'',slides:[]},edit=null,imgData='',vfileURL='';
-try{S=Object.assign(S,JSON.parse(localStorage.getItem('sig')||'{}'))}catch(e){}
+const DEFAULT_USERS=[
+ {u:'admin',p:'admin123',role:'admin'},
+ {u:'editor',p:'editor123',role:'editor'},
+ {u:'creator',p:'creator123',role:'creator'},
+ {u:'tivi',p:'tivi123',role:'viewer'}
+];
+const PERMS={
+ admin:['create','edit','delete','settings','users','export','play'],
+ editor:['create','edit','export','play'],
+ creator:['create','play'],
+ viewer:['play']
+};
+let S={company:'',ticker:'',logo:'',slides:[],users:DEFAULT_USERS,pin:'1234'},edit=null,imgData='',vfileURL='',currentUser=null;
+try{
+ const stored=JSON.parse(localStorage.getItem('sig')||'{}');
+ S=Object.assign(S,stored);
+ if(!S.users||!S.users.length)S.users=DEFAULT_USERS;
+ if(!S.pin&&!S.pinHash)S.pin='1234';
+}catch(e){}
+
+// Helper mã hóa SHA-256
+async function sha256(str){
+ const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
+ return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+// Khởi tạo và nâng cấp mã hóa SHA-256 cho toàn bộ tài khoản
+async function initSecurity(){
+ let changed=false;
+ if(!S.users.some(x=>x.u.toLowerCase()==='admin')){
+  S.users.unshift({u:'admin',hash:await sha256('admin123'),role:'admin'});
+  changed=true;
+ }
+ if(!S.pinHash&&S.pin){
+  S.pinHash=await sha256(S.pin);
+  delete S.pin;
+  changed=true;
+ }
+ for(let u of S.users){
+  if(u.p&&!u.hash){
+   u.hash=await sha256(u.p);
+   delete u.p;
+   changed=true;
+  }
+ }
+ if(changed)persist();
+}
+initSecurity();
+
 function persist(){try{localStorage.setItem('sig',JSON.stringify(S))}catch(e){alert('Bộ nhớ trình duyệt đầy, hãy dùng ảnh nhỏ hơn hoặc xóa bớt nội dung.')}}
+function can(act){if(!currentUser)return false;return(PERMS[currentUser.role]||[]).includes(act)}
+
+async function login(){
+ const u=$('#l_u').value.trim(), p=$('#l_p').value;
+ const h=await sha256(p);
+ const found=S.users.find(x=>x.u===u && (x.hash ? x.hash===h : x.p===p));
+ if(found){
+  currentUser=found;
+  $('#login_overlay').style.display='none';
+  applyPermissions();
+ }else if(h===(S.pinHash||'') || p===(S.pin||'')){
+  currentUser={u:'admin_pin',role:'admin'};
+  $('#login_overlay').style.display='none';
+  applyPermissions();
+ }else{
+  $('#l_err').textContent='Tên đăng nhập hoặc mật khẩu không đúng!';
+  $('#l_err').style.display='block';
+ }
+}
+
+function loginTV(){
+ currentUser={u:'tivi_tv',role:'viewer'};
+ $('#login_overlay').style.display='none';
+ applyPermissions();
+ play();
+}
+
+function logout(){
+ currentUser=null;
+ $('#login_overlay').style.display='flex';
+ $('#l_err').style.display='none';
+ $('#l_u').value='';$('#l_p').value='';
+}
+
+function applyPermissions(){
+ if(!currentUser)return;
+ $('#user_badge').textContent=`👤 ${currentUser.u} [${currentUser.role.toUpperCase()}]`;
+ $('#btn_users').style.display=can('users')?'':'none';
+ $('#settings_card').style.display=can('settings')?'':'none';
+ $('#add_card').style.display=can('create')?'':'none';
+ draw();
+}
+
+function openChangePassModal(){
+ if(!currentUser)return;
+ $('#old_pw').value='';$('#new_pw').value='';$('#confirm_pw').value='';
+ $('#change_pass_modal').showModal();
+}
+
+async function changeMyPassword(){
+ const oldP=$('#old_pw').value, newP=$('#new_pw').value, confP=$('#confirm_pw').value;
+ if(!oldP||!newP)return alert('Vui lòng nhập đầy đủ thông tin!');
+ const oldH=await sha256(oldP);
+ if(currentUser.hash && oldH!==currentUser.hash)return alert('Mật khẩu hiện tại không chính xác!');
+ if(newP!==confP)return alert('Xác nhận mật khẩu mới không khớp!');
+ if(newP.length<4)return alert('Mật khẩu mới phải từ 4 ký tự trở lên!');
+ 
+ const newH=await sha256(newP);
+ currentUser.hash=newH;
+ delete currentUser.p;
+ const idx=S.users.findIndex(x=>x.u===currentUser.u);
+ if(idx!==-1){
+  S.users[idx].hash=newH;
+  delete S.users[idx].p;
+  persist();
+ }
+ $('#change_pass_modal').close();
+ alert('Đổi mật khẩu thành công! Mật khẩu mới đã được mã hóa bảo mật SHA-256.');
+}
+
+function openUserModal(){
+ if(!can('users'))return alert('Chỉ có Admin mới có quyền quản lý người dùng!');
+ renderUserList();
+ $('#master_pin_in').value='';
+ $('#user_modal').showModal();
+}
+
+function renderUserList(){
+ $('#user_list_box').innerHTML=S.users.map((u,i)=>`
+  <div class="it" style="justify-content:space-between">
+   <div><b>${esc(u.u)}</b> <span class="tag">${u.role.toUpperCase()}</span></div>
+   ${u.u.toLowerCase()==='admin'?'<span class="tag" style="background:var(--ac);color:#fff;font-weight:bold">BẤT BIẾN</span>':`<button class="sm" style="color:#ff4d4f" onclick="deleteUser(${i})">Xóa</button>`}
+  </div>
+ `).join('');
+}
+
+async function addUser(){
+ const u=$('#new_u_name').value.trim(), p=$('#new_u_pass').value, r=$('#new_u_role').value;
+ if(!u||!p)return alert('Vui lòng nhập tên đăng nhập và mật khẩu!');
+ if(u.toLowerCase()==='admin')return alert('Tên đăng nhập "admin" là tài khoản hệ thống bất biến!');
+ if(S.users.some(x=>x.u.toLowerCase()===u.toLowerCase()))return alert('Tên đăng nhập này đã tồn tại!');
+ const hash=await sha256(p);
+ S.users.push({u,hash,role:r});
+ persist();
+ $('#new_u_name').value='';$('#new_u_pass').value='';
+ renderUserList();
+}
+
+function deleteUser(i){
+ const target=S.users[i];
+ if(!target)return;
+ if(target.u.toLowerCase()==='admin'){
+  return alert('Tài khoản "admin" là hệ thống bất biến, không thể xóa!');
+ }
+ if(confirm(`Bạn có chắc muốn xóa user "${target.u}"?`)){
+  S.users.splice(i,1);
+  persist();
+  renderUserList();
+ }
+}
+
+async function changePin(){
+ const pin=$('#master_pin_in').value.trim();
+ if(!pin)return alert('Vui lòng nhập mã PIN mới');
+ S.pinHash=await sha256(pin);
+ delete S.pin;
+ persist();
+ $('#master_pin_in').value='';
+ alert('Đã mã hóa SHA-256 và lưu Mã PIN Master Quản trị!');
+}
+
 $('#kind').innerHTML=Object.entries(KINDS).map(([k,v])=>`<option value="${k}">${v[0]} ${v[1]}</option>`).join('');
 $('#co_in').value=S.company;$('#tk_in').value=S.ticker;$('#lay').value=S.lay||'full';$('#sidenote').value=S.sidenote||'';$('#lay').onchange=e=>{S.lay=e.target.value;persist()};$('#sidenote').oninput=e=>{S.sidenote=e.target.value;persist()};
 $('#co_in').oninput=e=>{S.company=e.target.value;persist()};$('#tk_in').oninput=e=>{S.ticker=e.target.value;persist()};
+function updateLogoUI(){if(S.logo){$('#logost').textContent='Đã chọn logo ✔';$('#del_logo').style.display=''}else{$('#logost').textContent='Chưa có logo';$('#del_logo').style.display='none'}}
+updateLogoUI();
+$('#logo_in').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{const r=Math.min(1,600/im.width),c=document.createElement('canvas');c.width=im.width*r;c.height=im.height*r;c.getContext('2d').drawImage(im,0,0,c.width,c.height);S.logo=c.toDataURL('image/png',.9);persist();updateLogoUI()};im.src=URL.createObjectURL(f)};
+function removeLogo(){delete S.logo;$('#logo_in').value='';persist();updateLogoUI()}
+
 function fields(){const t=$('#type').value,sh=(id,v)=>$(id).style.display=v?'':'none';
- sh('#kindbox',t=='event');sh('#tbox',!['meeting','video','clock'].includes(t));sh('#sbox',['welcome','event','countdown'].includes(t));sh('#xbox',['welcome','meeting','text'].includes(t));sh('#ibox',!['video','meeting','clock'].includes(t));sh('#vbox',t=='video');sh('#cbox',t=='countdown');
+ sh('#kindbox',t=='event');sh('#tbox',!['meeting','video','clock'].includes(t));sh('#sbox',['welcome','event','countdown'].includes(t));sh('#xbox',['welcome','meeting','text'].includes(t));sh('#ibox',true);sh('#vbox',t=='video');sh('#cbox',t=='countdown');
  $('#tl').textContent=t=='welcome'?'Tên công ty khách':'Tiêu đề';$('#sl').textContent=t=='welcome'?'Tên khách / người tham dự':'Tên người / nhóm / dự án';
  $('#xl').textContent=t=='meeting'?'Mỗi dòng một cuộc họp: Giờ | Nội dung | Phòng':'Lời nhắn thêm'}
 fields();
@@ -99,44 +356,138 @@ function setDays(a){document.querySelectorAll('#days input').forEach(c=>c.checke
 $('#img').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{const r=Math.min(1,1600/im.width),c=document.createElement('canvas');c.width=im.width*r;c.height=im.height*r;c.getContext('2d').drawImage(im,0,0,c.width,c.height);imgData=c.toDataURL('image/jpeg',.8);$('#imgst').textContent='Đã chọn ảnh ✔'};im.src=URL.createObjectURL(f)};
 $('#vfile').onchange=e=>{const f=e.target.files[0];if(f){vfileURL=URL.createObjectURL(f);$('#vurl').value='(file: '+f.name+')'}};
 function val(){return{type:$('#type').value,kind:$('#kind').value,title:$('#title').value,sub:$('#sub').value,extra:$('#extra').value,img:imgData,vurl:$('#vurl').value.startsWith('(file')?'':$('#vurl').value,dur:+$('#dur').value||10,from:$('#from').value,to:$('#to').value,t1:$('#t1').value,t2:$('#t2').value,target:$('#target').value,days:[...document.querySelectorAll('#days input:checked')].map(c=>+c.value),on:true}}
-function save(){const v=val();if(v.type=='video'&&!v.vurl&&!vfileURL)return alert('Hãy nhập link hoặc chọn file video.');
+function save(){
+ if(!can('create')&&!can('edit'))return alert('Bạn không có quyền thực hiện thao tác này!');
+ const v=val();if(v.type=='video'&&!v.vurl&&!vfileURL)return alert('Hãy nhập link hoặc chọn file video.');
  if(v.type=='video'&&vfileURL&&!v.vurl)v.local=vfileURL;
- if(edit!==null){v.on=S.slides[edit].on;S.slides[edit]=v}else S.slides.push(v);persist();reset();draw()}
+ if(edit!==null){
+  if(!can('edit'))return alert('Bạn không có quyền chỉnh sửa nội dung!');
+  v.on=S.slides[edit].on;S.slides[edit]=v;
+ }else{
+  if(!can('create'))return alert('Bạn không có quyền tạo mới nội dung!');
+  S.slides.push(v);
+ }
+ persist();reset();draw();
+}
 function reset(){edit=null;imgData='';vfileURL='';$('#ft').textContent='Thêm nội dung';['title','sub','extra','vurl','from','to','t1','t2','target'].forEach(i=>$('#'+i).value='');setDays();$('#imgst').textContent='';$('#img').value='';$('#vfile').value='';$('#dur').value=10}
-function ed(i){const s=S.slides[i];edit=i;$('#ft').textContent='Chỉnh sửa';$('#type').value=s.type;fields();$('#kind').value=s.kind;['title','sub','extra','dur','from','to','t1','t2','target'].forEach(k=>$('#'+k).value=s[k]||'');setDays(s.days);$('#vurl').value=s.vurl||'';imgData=s.img||'';$('#imgst').textContent=imgData?'Giữ ảnh hiện tại':'';scrollTo(0,0)}
-function mv(i,d){const j=i+d;if(j<0||j>=S.slides.length)return;[S.slides[i],S.slides[j]]=[S.slides[j],S.slides[i]];persist();draw()}
-function draw(){$('#empty').style.display=S.slides.length?'none':'';
- $('#list').innerHTML=S.slides.map((s,i)=>`<div class="it ${s.on?'':'off'}"><input type="checkbox" style="width:auto" ${s.on?'checked':''} onchange="S.slides[${i}].on=this.checked;persist();draw()"><span class="tag">${LBL[s.type]}</span><span class="t">${esc(s.title||s.vurl||LBL[s.type])}</span><button class="sm" onclick="mv(${i},-1)">↑</button><button class="sm" onclick="mv(${i},1)">↓</button><button class="sm" onclick="ed(${i})">Sửa</button><button class="sm" onclick="if(confirm('Xóa?')){S.slides.splice(${i},1);persist();draw()}">Xóa</button></div>`).join('')}
+function ed(i){
+ if(!can('edit'))return alert('Bạn không có quyền chỉnh sửa!');
+ const s=S.slides[i];edit=i;$('#ft').textContent='Chỉnh sửa';$('#type').value=s.type;fields();$('#kind').value=s.kind;['title','sub','extra','dur','from','to','t1','t2','target'].forEach(k=>$('#'+k).value=s[k]||'');setDays(s.days);$('#vurl').value=s.vurl||'';imgData=s.img||'';$('#imgst').textContent=imgData?'Giữ ảnh hiện tại':'';scrollTo(0,0);
+}
+function mv(i,d){
+ if(!can('edit'))return;
+ const j=i+d;if(j<0||j>=S.slides.length)return;[S.slides[i],S.slides[j]]=[S.slides[j],S.slides[i]];persist();draw();
+}
+function draw(){
+ $('#empty').style.display=S.slides.length?'none':'';
+ $('#list').innerHTML=S.slides.map((s,i)=>{
+  const editBtn=can('edit')?`<button class="sm" onclick="ed(${i})">Sửa</button>`:'';
+  const delBtn=can('delete')?`<button class="sm" onclick="if(confirm('Xóa?')){S.slides.splice(${i},1);persist();draw()}">Xóa</button>`:'';
+  const chkDis=can('edit')?'':'disabled';
+  return `<div class="it ${s.on?'':'off'}"><input type="checkbox" style="width:auto" ${s.on?'checked':''} ${chkDis} onchange="S.slides[${i}].on=this.checked;persist();draw()"><span class="tag">${LBL[s.type]}</span><span class="t">${esc(s.title||s.vurl||LBL[s.type])}</span><button class="sm" onclick="mv(${i},-1)">↑</button><button class="sm" onclick="mv(${i},1)">↓</button>${editBtn}${delBtn}</div>`;
+ }).join('');
+}
 draw();
-function exp(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download='signage.json';a.click()}
-$('#imp').onchange=e=>{const r=new FileReader();r.onload=()=>{try{S=Object.assign(S,JSON.parse(r.result));persist();location.reload()}catch(x){alert('File không hợp lệ')}};r.readAsText(e.target.files[0])};
+function exp(){if(!can('export'))return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download='signage.json';a.click()}
+$('#imp').onchange=e=>{if(!can('export'))return;const r=new FileReader();r.onload=()=>{try{S=Object.assign(S,JSON.parse(r.result));persist();location.reload()}catch(x){alert('File không hợp lệ')}};r.readAsText(e.target.files[0])};
+
 /* PLAYER */
-let L=[],cur=0,tm;
+let L=[],cur=0,tm,cdInt=null;
 const today=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
 function active(){const n=new Date(),hm=n.toTimeString().slice(0,5);return S.slides.filter(s=>s.on&&(!s.from||s.from<=today())&&(!s.to||s.to>=today())&&(!s.days||s.days.includes(n.getDay()))&&(!s.t1||s.t1<=hm)&&(!s.t2||s.t2>=hm))}
 const yt=u=>{const m=String(u||'').match(/(?:youtu\.be\/|v=|embed\/|shorts\/|live\/)([\w-]{11})/);return m&&m[1]};
 function html(s){const bg=s.img?`style="background-image:url(${s.img})"`:'',ov=s.img?'ov':'';
  if(s.type=='welcome')return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#1e3c72,#2a5298)"'}><div class="mid">Kính chào quý khách</div><div class="big">${esc(s.title)}</div><div class="mid">${esc(s.sub)}</div><div class="sm2">${esc(s.extra)}</div></div>`;
  if(s.type=='event'){const k=KINDS[s.kind]||KINDS.other;return`<div class="sl ${ov}" style="${s.img?`background-image:url(${s.img})`:`background:linear-gradient(135deg,${k[2]})`}"><div class="emo">${k[0]}</div><div class="mid">${k[1]}</div><div class="big">${esc(s.title)}</div><div class="mid">${esc(s.sub)}</div><div class="sm2">${esc(s.extra)}</div></div>`}
- if(s.type=='meeting'){const rows=(s.extra||'').split('\n').filter(x=>x.trim()).map(l=>{const p=l.split('|').map(x=>x.trim());return`<div class="mr"><b>${esc(p[0])}</b><span>${esc(p[1])}</span><i>${esc(p[2])}</i></div>`}).join('')||'<div class="mid">Hôm nay không có cuộc họp</div>';
-  return`<div class="sl" style="background:linear-gradient(135deg,#232526,#414345)"><div class="mt"><h3>📅 Lịch họp hôm nay</h3>${rows}</div></div>`}
+ if(s.type=='meeting'){const rows=(s.extra||'').split('\n').filter(x=>x.trim()).map(l=>{const p=l.split('|').map(x=>x.trim());return`<div class="mr"><b>${esc(p[0])}</b><span>${esc(p[1])}</span><i>${esc(p[2]||'')}</i></div>`}).join('')||'<div class="mid">Hôm nay không có cuộc họp</div>';
+  return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#232526,#414345)"'}><div class="mt"><h3>📅 Lịch họp hôm nay</h3>${rows}</div></div>`}
  const y=s.type=='video'&&yt(s.vurl);if(y)return`<div class="sl" style="background:#000;padding:0"><iframe src="https://www.youtube.com/embed/${y}?autoplay=1&mute=1&controls=0&rel=0&playsinline=1&iv_load_policy=3&origin=${encodeURIComponent(location.origin)}&widget_referrer=${encodeURIComponent(location.href)}" allow="autoplay; encrypted-media" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;inset:0;width:100%;height:100%;border:0"></iframe></div>`;
  if(s.type=='text')return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#0f2027,#2c5364)"'}><div class="emo">📢</div><div class="big">${esc(s.title)}</div><div class="mid" style="white-space:pre-line">${esc(s.extra)}</div></div>`;
- if(s.type=='clock'){const d=new Date();return`<div class="sl" style="background:linear-gradient(135deg,#141e30,#243b55)"><div class="big" style="font-size:14vw">${d.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}</div><div class="mid">${d.toLocaleDateString('vi-VN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>`}
- if(s.type=='countdown'){const ms=new Date(s.target)-Date.now(),d=Math.ceil(ms/864e5);return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#7f00ff,#e100ff)"'}><div class="emo">⏳</div><div class="mid">${esc(s.title)}</div><div class="big" style="font-size:12vw">${isNaN(ms)?'':ms<=0?'Hôm nay!':'Còn '+d+' ngày'}</div><div class="mid">${esc(s.sub)}</div></div>`}
- return`<div class="sl" style="background:#000"><video id="v" autoplay muted playsinline src="${esc(s.local||s.vurl)}"></video></div>`}
-function show(){clearTimeout(tm);L=active();const sp=S.lay=='side';$('#player').classList.toggle('sp',sp);if(sp){renderSide();L=L.filter(s=>s.type!='meeting')}if(!L.length){$('#stage').innerHTML='<div class="sl"><div class="mid">Chưa có nội dung hiển thị</div></div>';tm=setTimeout(show,5000);return}
- const s=L[cur%L.length];cur++;$('#stage').innerHTML=html(s);const pg=$('#pg');pg.style.transition='none';pg.style.width='0';
+ if(s.type=='clock'){const d=new Date();return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#141e30,#243b55)"'}><div class="big" style="font-size:14vw">${d.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}</div><div class="mid">${d.toLocaleDateString('vi-VN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>`}
+ if(s.type=='countdown'){return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#7f00ff,#e100ff)"'}><div class="emo">⏳</div><div class="mid" style="font-size:3.5vw;font-weight:700">${esc(s.title)}</div><div id="cd_live_box" style="width:100%"></div><div class="mid" style="font-size:2.2vw">${esc(s.sub)}</div></div>`}
+ return`<div class="sl ${ov}" ${bg||'style="background:#000"'}><video id="v" autoplay muted playsinline src="${esc(s.local||s.vurl)}"></video></div>`}
+
+function startLiveCountdown(targetStr){
+ if(cdInt)clearInterval(cdInt);
+ const el=$('#cd_live_box');if(!el)return;
+ const target=new Date(targetStr).getTime();
+ if(isNaN(target)){el.innerHTML='<div class="big" style="font-size:5vw">Chưa đặt thời gian</div>';return}
+ const tick=()=>{
+  const diff=target-Date.now();
+  if(diff<=0){el.innerHTML='<div class="big" style="font-size:7vw;color:#ffd166">🎉 SỰ KIỆN ĐANG DIỄN RA! 🎉</div>';return}
+  const d=Math.floor(diff/(1000*60*60*24));
+  const h=Math.floor((diff/(1000*60*60))%24);
+  const m=Math.floor((diff/1000/60)%60);
+  const s=Math.floor((diff/1000)%60);
+  const pad=n=>String(n).padStart(2,'0');
+  el.innerHTML=`<div class="cd-grid">
+   <div class="cd-box"><span class="cd-num">${d}</span><span class="cd-lbl">NGÀY</span></div>
+   <div class="cd-box"><span class="cd-num">${pad(h)}</span><span class="cd-lbl">GIỜ</span></div>
+   <div class="cd-box"><span class="cd-num">${pad(m)}</span><span class="cd-lbl">PHÚT</span></div>
+   <div class="cd-box"><span class="cd-num">${pad(s)}</span><span class="cd-lbl">GIÂY</span></div>
+  </div>`;
+ };
+ tick();
+ cdInt=setInterval(tick,1000);
+}
+
+function show(){
+ clearTimeout(tm);if(cdInt){clearInterval(cdInt);cdInt=null}
+ L=active();const sp=S.lay=='side';$('#player').classList.toggle('sp',sp);
+ if(sp){
+  renderSide();
+  const nonMeeting=L.filter(s=>s.type!='meeting');
+  if(nonMeeting.length) L=nonMeeting;
+ }
+ if(!L.length){
+  $('#stage').innerHTML='<div class="sl"><div class="mid">Chưa có nội dung hiển thị</div><div class="sm2" style="opacity:0.75;margin-top:1vw">(Lưu ý: Kiểm tra lại khung "Từ giờ - Đến giờ" hoặc "Từ ngày - Đến ngày")</div></div>';
+  tm=setTimeout(show,5000);
+  return;
+ }
+ const s=L[cur%L.length];cur++;$('#stage').innerHTML=html(s);
+ if(s.type==='countdown')startLiveCountdown(s.target);
+ const pg=$('#pg');pg.style.transition='none';pg.style.width='0';
  if(s.type=='video'){const v=$('#v');if(v)v.onended=v.onerror=show;tm=setTimeout(show,(v?Math.max(s.dur,600):s.dur)*1000)}
- else{setTimeout(()=>{pg.style.transition=`width ${s.dur}s linear`;pg.style.width='100%'},50);tm=setTimeout(show,s.dur*1000)}}
+ else{setTimeout(()=>{pg.style.transition=`width ${s.dur}s linear`;pg.style.width='100%';},50);tm=setTimeout(show,s.dur*1000)}
+}
 function renderSide(){const ms=active().filter(s=>s.type=='meeting').flatMap(s=>(s.extra||'').split('\n').filter(x=>x.trim())).sort();
 $('#side').innerHTML='<div class="c" id="sc"></div><div class="d" id="sd"></div>'+(ms.length?'<h4>📅 Lịch họp hôm nay</h4>'+ms.map(l=>{const p=l.split('|').map(x=>x.trim());return`<div class="m"><b>${esc(p[0])}</b>${esc(p[1])}<i>${esc(p[2])}</i></div>`}).join(''):'')+(S.sidenote?`<div class="n">${esc(S.sidenote)}</div>`:'');tick()}
 function tick(){const n=new Date(),a=$('#sc');if(a){a.textContent=n.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});$('#sd').textContent=n.toLocaleDateString('vi-VN',{weekday:'long',day:'numeric',month:'long'})}}
 function clk(){tick();$('#clock').textContent=new Date().toLocaleString('vi-VN',{weekday:'long',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
-function play(){cur=0;$('#co').textContent=S.company;$('#tk span').textContent=S.ticker||'';$('#player').hidden=false;clk();setInterval(clk,20000);
+function play(){cur=0;$('#co').textContent=S.company;if(S.logo){$('#player-logo').src=S.logo;$('#player-logo').hidden=false}else{$('#player-logo').hidden=true}$('#tk span').textContent=S.ticker||'';$('#player').hidden=false;clk();setInterval(clk,20000);
  (document.documentElement.requestFullscreen||(()=>{})).call(document.documentElement).catch?.(()=>{});show()}
-function stop(){clearTimeout(tm);$('#player').hidden=true;$('#stage').innerHTML='';if(document.fullscreenElement)document.exitFullscreen()}
+
+function stop(){
+ if(currentUser && currentUser.role==='viewer'){
+  $('#pin_modal').showModal();
+  return;
+ }
+ clearTimeout(tm);if(cdInt){clearInterval(cdInt);cdInt=null}$('#player').hidden=true;$('#stage').innerHTML='';if(document.fullscreenElement)document.exitFullscreen();
+}
+
+async function confirmUnlock(){
+ const pin=$('#unlock_pin').value;
+ const pinH=await sha256(pin);
+ if(pinH===S.pinHash || pin===(S.pin||'')){
+  $('#pin_modal').close();
+  $('#unlock_pin').value='';
+  clearTimeout(tm);if(cdInt){clearInterval(cdInt);cdInt=null}$('#player').hidden=true;$('#stage').innerHTML='';if(document.fullscreenElement)document.exitFullscreen();
+  currentUser={u:'admin_pin',role:'admin'};
+  applyPermissions();
+ }else{
+  alert('Mã PIN không đúng!');
+ }
+}
+
 addEventListener('keydown',e=>{if(e.key=='Escape')stop()});
 document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&!$('#player').hidden)stop()});
 $('#player').onclick=e=>{if(e.detail>1)stop()};
+
+// Kiểm tra tham số URL - Mặc định Tivi nếu không có ?admin=1
+const urlParams=new URLSearchParams(window.location.search);
+if(urlParams.get('mode')==='player'||urlParams.get('tv')==='1'||!urlParams.get('admin')){
+ currentUser={u:'tivi_tv',role:'viewer'};
+ $('#login_overlay').style.display='none';
+ document.addEventListener('DOMContentLoaded',play);
+}
 </script></body></html>
