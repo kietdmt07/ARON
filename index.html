@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="vi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Màn hình truyền thông nội bộ</title>
+<style>
+:root{--bg:#f4f6fa;--fg:#1a1d24;--card:#fff;--bd:#dce1ea;--ac:#2f5bea;--mu:#667085;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14161b;--fg:#eceef3;--card:#1e2128;--bd:#333845;--ac:#7b9bff;--mu:#9aa3b5}}
+:root[data-theme="dark"]{--bg:#14161b;--fg:#eceef3;--card:#1e2128;--bd:#333845;--ac:#7b9bff;--mu:#9aa3b5}
+*{box-sizing:border-box}html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:20px;display:grid;gap:16px}
+h1{font-size:22px;margin:0}h2{font-size:16px;margin:0 0 10px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px}
+button,select,input,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px 10px}
+input,textarea,select{width:100%}label{display:block;font-size:13px;color:var(--mu);margin:8px 0 3px}
+button{cursor:pointer;width:auto}button.p{background:var(--ac);color:#fff;border-color:var(--ac)}
+button.sm{padding:4px 8px;font-size:13px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:800px){.grid{grid-template-columns:1fr}}
+.it{display:flex;gap:8px;align-items:center;padding:8px;border:1px solid var(--bd);border-radius:8px;margin-bottom:6px}
+.it .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.it.off{opacity:.45}
+.tag{font-size:12px;background:var(--bg);border:1px solid var(--bd);border-radius:20px;padding:1px 8px;color:var(--mu)}
+.hint{font-size:13px;color:var(--mu)}
+/* PLAYER */
+#player{position:fixed;inset:0;background:#000;color:#fff;z-index:9;display:flex;flex-direction:column;cursor:none;font-family:system-ui,"Segoe UI",sans-serif}
+#player[hidden]{display:none}
+#stage{flex:1;position:relative;overflow:hidden}
+.sl{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:5vw;background-size:cover;background-position:center;animation:in .8s}
+@keyframes in{from{opacity:0;transform:scale(1.03)}to{opacity:1;transform:none}}
+.sl.ov::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,.45)}.sl>*{position:relative}
+.big{font-size:6.2vw;font-weight:800;line-height:1.15;margin:.2em 0;text-shadow:0 2px 12px rgba(0,0,0,.3)}
+.mid{font-size:3vw;opacity:.95}.sm2{font-size:2vw;opacity:.8;margin-top:1vw}.emo{font-size:9vw}
+.mt{width:80%;text-align:left}.mt h3{font-size:4vw;margin:0 0 2vw;text-align:center}
+.mr{display:flex;gap:2vw;font-size:2.6vw;padding:1.1vw 2vw;margin-bottom:1vw;background:rgba(255,255,255,.1);border-radius:1vw}
+.mr b{width:12vw;color:#ffd166}.mr span:nth-child(2){flex:1}.mr i{font-style:normal;opacity:.75}
+video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+#bar{height:5.5vh;min-height:36px;background:#0b0d12;display:flex;align-items:center;gap:2vw;padding:0 2vw;font-size:2.2vh}
+#clock{font-weight:700;white-space:nowrap}#tk{flex:1;overflow:hidden;white-space:nowrap;opacity:.9}
+#tk span{display:inline-block;padding-left:100%;animation:mq 30s linear infinite}@keyframes mq{to{transform:translateX(-100%)}}
+#co{font-weight:700;color:#ffd166}
+#body{flex:1;display:flex;min-height:0}
+#side{display:none;width:30%;background:#0e1118;padding:2vw;flex-direction:column;gap:1.2vw;overflow:hidden;border-left:1px solid #222}
+.sp #side{display:flex}.sp .sl{zoom:.7}.sp #clock{display:none}
+#side .c{font-size:6vw;font-weight:800;line-height:1}#side .d{font-size:1.7vw;opacity:.8}
+#side h4{font-size:1.5vw;margin:1vw 0 0;color:#ffd166}
+#side .m{font-size:1.5vw;padding:.7vw 1vw;background:rgba(255,255,255,.08);border-radius:.6vw}#side .m b{color:#ffd166;margin-right:.6vw}#side .m i{display:block;font-style:normal;opacity:.7;font-size:1.2vw}
+#side .n{margin-top:auto;font-size:1.6vw;white-space:pre-line}
+#pg{height:4px;background:#ffd166;width:0}
+</style></head><body>
+<div class="wrap">
+ <div class="row"><h1>📺 Màn hình truyền thông nội bộ</h1><span style="flex:1"></span>
+  <button class="p" onclick="play()">▶ Phát toàn màn hình</button>
+  <button onclick="exp()">Xuất</button><button onclick="$('#imp').click()">Nhập</button><input id="imp" type="file" accept=".json" hidden></div>
+ <div class="card"><div class="grid">
+  <div><label>Tên công ty (hiện góc dưới)</label><input id="co_in"></div>
+  <div><label>Dòng chữ chạy (thông báo chung)</label><input id="tk_in"></div>
+  <div><label>Bố cục màn hình</label><select id="lay"><option value="full">Toàn màn hình (1 vùng)</option><option value="side">Chia vùng: nội dung chính (70%) + cột bên phải (30%)</option></select></div>
+  <div><label>Ghi chú ở cột bên phải (tùy chọn)</label><input id="sidenote" placeholder="VD: Wifi khách: Guest / 12345678"></div></div></div>
+ <div class="grid">
+  <div class="card"><h2>Danh sách trình chiếu</h2><div id="list"></div><p class="hint" id="empty">Chưa có nội dung. Hãy thêm ở bên phải.</p></div>
+  <div class="card"><h2 id="ft">Thêm nội dung</h2>
+   <label>Loại</label><select id="type" onchange="fields()">
+    <option value="welcome">👋 Chào đón khách</option><option value="meeting">📅 Lịch họp hôm nay</option>
+    <option value="event">🎉 Banner sự kiện</option><option value="video">🎬 Video</option><option value="text">📢 Thông báo chữ</option><option value="countdown">⏳ Đếm ngược sự kiện</option><option value="clock">🕒 Đồng hồ &amp; ngày</option></select>
+   <div id="kindbox"><label>Loại sự kiện</label><select id="kind"></select></div>
+   <div id="tbox"><label id="tl">Tiêu đề</label><input id="title"></div>
+   <div id="sbox"><label id="sl">Phụ đề</label><input id="sub"></div>
+   <div id="xbox"><label id="xl">Nội dung</label><textarea id="extra" rows="4"></textarea></div>
+   <div id="ibox"><label>Ảnh nền (tùy chọn)</label><input id="img" type="file" accept="image/*"><span class="hint" id="imgst"></span></div>
+   <div id="vbox"><label>Link video (.mp4 hoặc link YouTube)</label><input id="vurl" placeholder="https://youtu.be/... hoặc https://.../video.mp4"><span class="hint">Với link YouTube: nhập thời gian hiển thị đúng bằng độ dài video (giây). Video chạy tắt tiếng.</span><label>Hoặc chọn file (chỉ dùng trong phiên này)</label><input id="vfile" type="file" accept="video/*"></div>
+   <div class="grid" style="gap:10px"><div><label>Thời gian hiển thị (giây)</label><input id="dur" type="number" min="3" value="10"></div>
+    <div><label>Hiển thị từ ngày</label><input id="from" type="date"></div></div>
+   <label>Đến hết ngày (để trống = luôn hiện)</label><input id="to" type="date">
+   <label>Chỉ hiện vào các thứ</label><div class="row" id="days"></div>
+   <div class="grid" style="gap:10px"><div><label>Từ giờ</label><input id="t1" type="time"></div><div><label>Đến giờ</label><input id="t2" type="time"></div></div>
+   <div id="cbox"><label>Thời điểm diễn ra (cho Đếm ngược)</label><input id="target" type="datetime-local"></div>
+   <div class="row" style="margin-top:12px"><button class="p" onclick="save()">Lưu</button><button onclick="reset()">Làm mới form</button></div>
+  </div></div>
+</div>
+<div id="player" hidden><div id="pg"></div><div id="body"><div id="stage"></div><div id="side"></div></div>
+ <div id="bar"><span id="co"></span><span id="tk"><span></span></span><span id="clock"></span></div></div>
+<script>
+const $=s=>document.querySelector(s),esc=t=>String(t||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const KINDS={birthday:['🎂','Chúc mừng sinh nhật','#ff7eb3,#ff758c'],kickoff:['🚀','Khởi động dự án','#4facfe,#00c6fb'],golive:['✅','Chúc mừng Go-live','#43e97b,#1a9e8f'],client:['🤝','Chào đón khách hàng mới','#fa709a,#f6a623'],team:['🏕️','Team building','#f093fb,#7b5cf0'],trip:['🏖️','Nghỉ dưỡng','#30cfd0,#330867'],sport:['⚽','Sự kiện thể thao','#f7971e,#e0412f'],other:['🎉','Thông báo','#667eea,#764ba2']};
+const LBL={welcome:'Chào khách',meeting:'Lịch họp',event:'Sự kiện',video:'Video',text:'Thông báo',countdown:'Đếm ngược',clock:'Đồng hồ'};
+let S={company:'',ticker:'',slides:[]},edit=null,imgData='',vfileURL='';
+try{S=Object.assign(S,JSON.parse(localStorage.getItem('sig')||'{}'))}catch(e){}
+function persist(){try{localStorage.setItem('sig',JSON.stringify(S))}catch(e){alert('Bộ nhớ trình duyệt đầy, hãy dùng ảnh nhỏ hơn hoặc xóa bớt nội dung.')}}
+$('#kind').innerHTML=Object.entries(KINDS).map(([k,v])=>`<option value="${k}">${v[0]} ${v[1]}</option>`).join('');
+$('#co_in').value=S.company;$('#tk_in').value=S.ticker;$('#lay').value=S.lay||'full';$('#sidenote').value=S.sidenote||'';$('#lay').onchange=e=>{S.lay=e.target.value;persist()};$('#sidenote').oninput=e=>{S.sidenote=e.target.value;persist()};
+$('#co_in').oninput=e=>{S.company=e.target.value;persist()};$('#tk_in').oninput=e=>{S.ticker=e.target.value;persist()};
+function fields(){const t=$('#type').value,sh=(id,v)=>$(id).style.display=v?'':'none';
+ sh('#kindbox',t=='event');sh('#tbox',!['meeting','video','clock'].includes(t));sh('#sbox',['welcome','event','countdown'].includes(t));sh('#xbox',['welcome','meeting','text'].includes(t));sh('#ibox',!['video','meeting','clock'].includes(t));sh('#vbox',t=='video');sh('#cbox',t=='countdown');
+ $('#tl').textContent=t=='welcome'?'Tên công ty khách':'Tiêu đề';$('#sl').textContent=t=='welcome'?'Tên khách / người tham dự':'Tên người / nhóm / dự án';
+ $('#xl').textContent=t=='meeting'?'Mỗi dòng một cuộc họp: Giờ | Nội dung | Phòng':'Lời nhắn thêm'}
+fields();
+$('#days').innerHTML=['CN','T2','T3','T4','T5','T6','T7'].map((d,i)=>`<label style="display:inline-flex;gap:4px;margin:0;align-items:center"><input type="checkbox" style="width:auto" value="${i}" checked>${d}</label>`).join('');
+function setDays(a){document.querySelectorAll('#days input').forEach(c=>c.checked=!a||a.includes(+c.value))}
+$('#img').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{const r=Math.min(1,1600/im.width),c=document.createElement('canvas');c.width=im.width*r;c.height=im.height*r;c.getContext('2d').drawImage(im,0,0,c.width,c.height);imgData=c.toDataURL('image/jpeg',.8);$('#imgst').textContent='Đã chọn ảnh ✔'};im.src=URL.createObjectURL(f)};
+$('#vfile').onchange=e=>{const f=e.target.files[0];if(f){vfileURL=URL.createObjectURL(f);$('#vurl').value='(file: '+f.name+')'}};
+function val(){return{type:$('#type').value,kind:$('#kind').value,title:$('#title').value,sub:$('#sub').value,extra:$('#extra').value,img:imgData,vurl:$('#vurl').value.startsWith('(file')?'':$('#vurl').value,dur:+$('#dur').value||10,from:$('#from').value,to:$('#to').value,t1:$('#t1').value,t2:$('#t2').value,target:$('#target').value,days:[...document.querySelectorAll('#days input:checked')].map(c=>+c.value),on:true}}
+function save(){const v=val();if(v.type=='video'&&!v.vurl&&!vfileURL)return alert('Hãy nhập link hoặc chọn file video.');
+ if(v.type=='video'&&vfileURL&&!v.vurl)v.local=vfileURL;
+ if(edit!==null){v.on=S.slides[edit].on;S.slides[edit]=v}else S.slides.push(v);persist();reset();draw()}
+function reset(){edit=null;imgData='';vfileURL='';$('#ft').textContent='Thêm nội dung';['title','sub','extra','vurl','from','to','t1','t2','target'].forEach(i=>$('#'+i).value='');setDays();$('#imgst').textContent='';$('#img').value='';$('#vfile').value='';$('#dur').value=10}
+function ed(i){const s=S.slides[i];edit=i;$('#ft').textContent='Chỉnh sửa';$('#type').value=s.type;fields();$('#kind').value=s.kind;['title','sub','extra','dur','from','to','t1','t2','target'].forEach(k=>$('#'+k).value=s[k]||'');setDays(s.days);$('#vurl').value=s.vurl||'';imgData=s.img||'';$('#imgst').textContent=imgData?'Giữ ảnh hiện tại':'';scrollTo(0,0)}
+function mv(i,d){const j=i+d;if(j<0||j>=S.slides.length)return;[S.slides[i],S.slides[j]]=[S.slides[j],S.slides[i]];persist();draw()}
+function draw(){$('#empty').style.display=S.slides.length?'none':'';
+ $('#list').innerHTML=S.slides.map((s,i)=>`<div class="it ${s.on?'':'off'}"><input type="checkbox" style="width:auto" ${s.on?'checked':''} onchange="S.slides[${i}].on=this.checked;persist();draw()"><span class="tag">${LBL[s.type]}</span><span class="t">${esc(s.title||s.vurl||LBL[s.type])}</span><button class="sm" onclick="mv(${i},-1)">↑</button><button class="sm" onclick="mv(${i},1)">↓</button><button class="sm" onclick="ed(${i})">Sửa</button><button class="sm" onclick="if(confirm('Xóa?')){S.slides.splice(${i},1);persist();draw()}">Xóa</button></div>`).join('')}
+draw();
+function exp(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download='signage.json';a.click()}
+$('#imp').onchange=e=>{const r=new FileReader();r.onload=()=>{try{S=Object.assign(S,JSON.parse(r.result));persist();location.reload()}catch(x){alert('File không hợp lệ')}};r.readAsText(e.target.files[0])};
+/* PLAYER */
+let L=[],cur=0,tm;
+const today=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
+function active(){const n=new Date(),hm=n.toTimeString().slice(0,5);return S.slides.filter(s=>s.on&&(!s.from||s.from<=today())&&(!s.to||s.to>=today())&&(!s.days||s.days.includes(n.getDay()))&&(!s.t1||s.t1<=hm)&&(!s.t2||s.t2>=hm))}
+const yt=u=>{const m=String(u||'').match(/(?:youtu\.be\/|v=|embed\/|shorts\/|live\/)([\w-]{11})/);return m&&m[1]};
+function html(s){const bg=s.img?`style="background-image:url(${s.img})"`:'',ov=s.img?'ov':'';
+ if(s.type=='welcome')return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#1e3c72,#2a5298)"'}><div class="mid">Kính chào quý khách</div><div class="big">${esc(s.title)}</div><div class="mid">${esc(s.sub)}</div><div class="sm2">${esc(s.extra)}</div></div>`;
+ if(s.type=='event'){const k=KINDS[s.kind]||KINDS.other;return`<div class="sl ${ov}" style="${s.img?`background-image:url(${s.img})`:`background:linear-gradient(135deg,${k[2]})`}"><div class="emo">${k[0]}</div><div class="mid">${k[1]}</div><div class="big">${esc(s.title)}</div><div class="mid">${esc(s.sub)}</div><div class="sm2">${esc(s.extra)}</div></div>`}
+ if(s.type=='meeting'){const rows=(s.extra||'').split('\n').filter(x=>x.trim()).map(l=>{const p=l.split('|').map(x=>x.trim());return`<div class="mr"><b>${esc(p[0])}</b><span>${esc(p[1])}</span><i>${esc(p[2])}</i></div>`}).join('')||'<div class="mid">Hôm nay không có cuộc họp</div>';
+  return`<div class="sl" style="background:linear-gradient(135deg,#232526,#414345)"><div class="mt"><h3>📅 Lịch họp hôm nay</h3>${rows}</div></div>`}
+ const y=s.type=='video'&&yt(s.vurl);if(y)return`<div class="sl" style="background:#000;padding:0"><iframe src="https://www.youtube.com/embed/${y}?autoplay=1&mute=1&controls=0&rel=0&playsinline=1&iv_load_policy=3&origin=${encodeURIComponent(location.origin)}&widget_referrer=${encodeURIComponent(location.href)}" allow="autoplay; encrypted-media" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;inset:0;width:100%;height:100%;border:0"></iframe></div>`;
+ if(s.type=='text')return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#0f2027,#2c5364)"'}><div class="emo">📢</div><div class="big">${esc(s.title)}</div><div class="mid" style="white-space:pre-line">${esc(s.extra)}</div></div>`;
+ if(s.type=='clock'){const d=new Date();return`<div class="sl" style="background:linear-gradient(135deg,#141e30,#243b55)"><div class="big" style="font-size:14vw">${d.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}</div><div class="mid">${d.toLocaleDateString('vi-VN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>`}
+ if(s.type=='countdown'){const ms=new Date(s.target)-Date.now(),d=Math.ceil(ms/864e5);return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#7f00ff,#e100ff)"'}><div class="emo">⏳</div><div class="mid">${esc(s.title)}</div><div class="big" style="font-size:12vw">${isNaN(ms)?'':ms<=0?'Hôm nay!':'Còn '+d+' ngày'}</div><div class="mid">${esc(s.sub)}</div></div>`}
+ return`<div class="sl" style="background:#000"><video id="v" autoplay muted playsinline src="${esc(s.local||s.vurl)}"></video></div>`}
+function show(){clearTimeout(tm);L=active();const sp=S.lay=='side';$('#player').classList.toggle('sp',sp);if(sp){renderSide();L=L.filter(s=>s.type!='meeting')}if(!L.length){$('#stage').innerHTML='<div class="sl"><div class="mid">Chưa có nội dung hiển thị</div></div>';tm=setTimeout(show,5000);return}
+ const s=L[cur%L.length];cur++;$('#stage').innerHTML=html(s);const pg=$('#pg');pg.style.transition='none';pg.style.width='0';
+ if(s.type=='video'){const v=$('#v');if(v)v.onended=v.onerror=show;tm=setTimeout(show,(v?Math.max(s.dur,600):s.dur)*1000)}
+ else{setTimeout(()=>{pg.style.transition=`width ${s.dur}s linear`;pg.style.width='100%'},50);tm=setTimeout(show,s.dur*1000)}}
+function renderSide(){const ms=active().filter(s=>s.type=='meeting').flatMap(s=>(s.extra||'').split('\n').filter(x=>x.trim())).sort();
+$('#side').innerHTML='<div class="c" id="sc"></div><div class="d" id="sd"></div>'+(ms.length?'<h4>📅 Lịch họp hôm nay</h4>'+ms.map(l=>{const p=l.split('|').map(x=>x.trim());return`<div class="m"><b>${esc(p[0])}</b>${esc(p[1])}<i>${esc(p[2])}</i></div>`}).join(''):'')+(S.sidenote?`<div class="n">${esc(S.sidenote)}</div>`:'');tick()}
+function tick(){const n=new Date(),a=$('#sc');if(a){a.textContent=n.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});$('#sd').textContent=n.toLocaleDateString('vi-VN',{weekday:'long',day:'numeric',month:'long'})}}
+function clk(){tick();$('#clock').textContent=new Date().toLocaleString('vi-VN',{weekday:'long',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
+function play(){cur=0;$('#co').textContent=S.company;$('#tk span').textContent=S.ticker||'';$('#player').hidden=false;clk();setInterval(clk,20000);
+ (document.documentElement.requestFullscreen||(()=>{})).call(document.documentElement).catch?.(()=>{});show()}
+function stop(){clearTimeout(tm);$('#player').hidden=true;$('#stage').innerHTML='';if(document.fullscreenElement)document.exitFullscreen()}
+addEventListener('keydown',e=>{if(e.key=='Escape')stop()});
+document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&!$('#player').hidden)stop()});
+$('#player').onclick=e=>{if(e.detail>1)stop()};
+</script></body></html>
