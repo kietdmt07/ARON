@@ -3,6 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Màn hình truyền thông nội bộ</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
 <style>
 :root{--bg:#f4f6fa;--fg:#1a1d24;--card:#fff;--bd:#dce1ea;--ac:#2f5bea;--mu:#667085;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14161b;--fg:#eceef3;--card:#1e2128;--bd:#333845;--ac:#7b9bff;--mu:#9aa3b5}}
@@ -95,8 +96,8 @@ dialog::backdrop{background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)}
    <div id="sbox"><label id="sl">Phụ đề</label><input id="sub"></div>
    <div id="xbox"><label id="xl">Nội dung</label><textarea id="extra" rows="4"></textarea></div>
    <div id="ibox"><label>Ảnh nền (tùy chọn)</label><input id="img" type="file" accept="image/*"><span class="hint" id="imgst"></span></div>
-   <div id="vbox"><label>Link video (.mp4 hoặc link YouTube)</label><input id="vurl" placeholder="https://youtu.be/... hoặc https://.../video.mp4"><span class="hint">Với link YouTube: nhập thời gian hiển thị đúng bằng độ dài video (giây). Video chạy tắt tiếng.</span><label>Hoặc chọn file (chỉ dùng trong phiên này)</label><input id="vfile" type="file" accept="video/*"></div>
-   <div class="grid" style="gap:10px"><div><label>Thời gian hiển thị (giây)</label><input id="dur" type="number" min="3" value="10"></div>
+   <div id="vbox"><label>Link video (.mp4 hoặc link YouTube)</label><input id="vurl" placeholder="https://youtu.be/... hoặc https://.../video.mp4"><span class="hint">Với video: Nhập thời gian phát (giây). Để 0 = Tự động chuyển slide khi video phát xong (hỗ trợ MP4 &amp; YouTube).</span><label>Hoặc chọn file (chỉ dùng trong phiên này)</label><input id="vfile" type="file" accept="video/*"></div>
+   <div class="grid" style="gap:10px"><div><label id="durlbl">Thời gian hiển thị (giây)</label><input id="dur" type="number" min="0" value="10"></div>
     <div><label>Hiển thị từ ngày</label><input id="from" type="date"></div></div>
    <label>Đến hết ngày (để trống = luôn hiện)</label><input id="to" type="date">
    <label>Chỉ hiện vào các thứ</label><div class="row" id="days"></div>
@@ -188,11 +189,12 @@ const $=s=>document.querySelector(s),esc=t=>String(t||'').replace(/[&<>"]/g,c=>(
 const KINDS={birthday:['🎂','Chúc mừng sinh nhật','#ff7eb3,#ff758c'],kickoff:['🚀','Khởi động dự án','#4facfe,#00c6fb'],golive:['✅','Chúc mừng Go-live','#43e97b,#1a9e8f'],client:['🤝','Chào đón khách hàng mới','#fa709a,#f6a623'],team:['🏕️','Team building','#f093fb,#7b5cf0'],trip:['🏖️','Nghỉ dưỡng','#30cfd0,#330867'],sport:['⚽','Sự kiện thể thao','#f7971e,#e0412f'],other:['🎉','Thông báo','#667eea,#764ba2']};
 const LBL={welcome:'Chào khách',meeting:'Lịch họp',event:'Sự kiện',video:'Video',text:'Thông báo',countdown:'Đếm ngược',clock:'Đồng hồ'};
 const DEFAULT_USERS=[
- {u:'admin',p:'admin123',role:'admin'},
- {u:'editor',p:'editor123',role:'editor'},
- {u:'creator',p:'creator123',role:'creator'},
- {u:'tivi',p:'tivi123',role:'viewer'}
+ {u:'admin',hash:'240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',role:'admin'},
+ {u:'editor',hash:'ef5e5a1fb95055e0e56cccf98a41e784a132c14e7f6e1ba244302f0e72b29baf',role:'editor'},
+ {u:'creator',hash:'756bf2effa2464565bab831d15a6a12d0fb1e7701294480c379b17f9c1064d0d',role:'creator'},
+ {u:'tivi',hash:'69480439fad39953627375d42598cca4ebab5421be733acae4c25f7b96031452',role:'viewer'}
 ];
+const DEFAULT_PIN_HASH = '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4';
 const PERMS={
  admin:['create','edit','delete','settings','users','export','play'],
  editor:['create','edit','export','play'],
@@ -203,12 +205,13 @@ const DEFAULT_SB_URL = "https://zffyyelruwybpvxevjzw.supabase.co";
 const DEFAULT_SB_KEY = "sb_publishable_MekYFVYuVVZUszEcZq-KCg_oxdvzAft";
 let sbClient=null, lastCloudUpdate=null, isSavingCloud=false;
 
-let S={company:'',ticker:'',logo:'',slides:[],users:DEFAULT_USERS,pin:'1234',pinLockEnabled:false,sbUrl:DEFAULT_SB_URL,sbKey:DEFAULT_SB_KEY},edit=null,imgData='',vfileURL='',currentUser=null;
+let S={company:'',ticker:'',logo:'',slides:[],users:DEFAULT_USERS,pinHash:DEFAULT_PIN_HASH,pinLockEnabled:false,sbUrl:DEFAULT_SB_URL,sbKey:DEFAULT_SB_KEY},edit=null,imgData='',vfileURL='',currentUser=null;
 try{
  const stored=JSON.parse(localStorage.getItem('sig')||'{}');
  S=Object.assign(S,stored);
  if(!S.users||!S.users.length)S.users=DEFAULT_USERS;
- if(!S.pin&&!S.pinHash)S.pin='1234';
+ if(!S.pinHash)S.pinHash=DEFAULT_PIN_HASH;
+ delete S.pin;
  if(!S.sbUrl || S.sbUrl.includes('mqyfdhpemocwzuujwpkx'))S.sbUrl=DEFAULT_SB_URL;
  if(!S.sbKey || S.sbKey.includes('HLs1Db6BSmXTwvlNt7FqrQ'))S.sbKey=DEFAULT_SB_KEY;
 }catch(e){}
@@ -218,25 +221,25 @@ async function sha256(str){
  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
-async function initSecurity(){
- let changed=false;
- if(!S.users.some(x=>x.u.toLowerCase()==='admin')){
-  S.users.unshift({u:'admin',hash:await sha256('admin123'),role:'admin'});
-  changed=true;
- }
- if(!S.pinHash&&S.pin){
-  S.pinHash=await sha256(S.pin);
-  delete S.pin;
-  changed=true;
- }
+async function sanitizeStateHashes(){
+ if(!S.users||!S.users.length)S.users=DEFAULT_USERS;
  for(let u of S.users){
-  if(u.p&&!u.hash){
-   u.hash=await sha256(u.p);
+  if(u.p){
+   if(!u.hash) u.hash=await sha256(u.p);
    delete u.p;
-   changed=true;
   }
  }
- if(changed)persist();
+ if(S.pin){
+  if(!S.pinHash) S.pinHash=await sha256(S.pin);
+  delete S.pin;
+ }
+}
+
+async function initSecurity(){
+ await sanitizeStateHashes();
+ if(!S.users.some(x=>x.u.toLowerCase()==='admin')){
+  S.users.unshift({u:'admin',hash:'240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',role:'admin'});
+ }
 }
 initSecurity();
 
@@ -286,6 +289,7 @@ async function loadFromCloud(){
 }
 
 async function saveToCloud(){
+ await sanitizeStateHashes();
  try{ localStorage.setItem('sig', JSON.stringify(S)); }catch(e){}
  if(isSavingCloud || !initSupabase()) return;
  isSavingCloud = true;
@@ -501,13 +505,21 @@ function removeLogo(){delete S.logo;$('#logo_in').value='';persist();updateLogoU
 function fields(){const t=$('#type').value,sh=(id,v)=>$(id).style.display=v?'':'none';
  sh('#kindbox',t=='event');sh('#tbox',!['meeting','video','clock'].includes(t));sh('#sbox',['welcome','event','countdown'].includes(t));sh('#xbox',['welcome','meeting','text'].includes(t));sh('#ibox',true);sh('#vbox',t=='video');sh('#cbox',t=='countdown');
  $('#tl').textContent=t=='welcome'?'Tên công ty khách':'Tiêu đề';$('#sl').textContent=t=='welcome'?'Tên khách / người tham dự':'Tên người / nhóm / dự án';
- $('#xl').textContent=t=='meeting'?'Mỗi dòng một cuộc họp: Giờ | Nội dung | Phòng':'Lời nhắn thêm'}
+ $('#xl').textContent=t=='meeting'?'Mỗi dòng một cuộc họp: Giờ | Nội dung | Phòng':'Lời nhắn thêm';
+ if(t=='video'){
+  $('#durlbl').textContent='Thời gian phát video (giây) (để 0 = tự phát hết video)';
+  if($('#dur').value=='10') $('#dur').value='0';
+ }else{
+  $('#durlbl').textContent='Thời gian hiển thị (giây)';
+  if($('#dur').value=='0') $('#dur').value='10';
+ }
+}
 fields();
 $('#days').innerHTML=['CN','T2','T3','T4','T5','T6','T7'].map((d,i)=>`<label style="display:inline-flex;gap:4px;margin:0;align-items:center"><input type="checkbox" style="width:auto" value="${i}" checked>${d}</label>`).join('');
 function setDays(a){document.querySelectorAll('#days input').forEach(c=>c.checked=!a||a.includes(+c.value))}
 $('#img').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{const r=Math.min(1,1600/im.width),c=document.createElement('canvas');c.width=im.width*r;c.height=im.height*r;c.getContext('2d').drawImage(im,0,0,c.width,c.height);imgData=c.toDataURL('image/jpeg',.8);$('#imgst').textContent='Đã chọn ảnh ✔'};im.src=URL.createObjectURL(f)};
 $('#vfile').onchange=e=>{const f=e.target.files[0];if(f){vfileURL=URL.createObjectURL(f);$('#vurl').value='(file: '+f.name+')'}};
-function val(){return{type:$('#type').value,kind:$('#kind').value,title:$('#title').value,sub:$('#sub').value,extra:$('#extra').value,img:imgData,vurl:$('#vurl').value.startsWith('(file')?'':$('#vurl').value,dur:+$('#dur').value||10,from:$('#from').value,to:$('#to').value,t1:$('#t1').value,t2:$('#t2').value,target:$('#target').value,days:[...document.querySelectorAll('#days input:checked')].map(c=>+c.value),on:true}}
+function val(){return{type:$('#type').value,kind:$('#kind').value,title:$('#title').value,sub:$('#sub').value,extra:$('#extra').value,img:imgData,vurl:$('#vurl').value.startsWith('(file')?'':$('#vurl').value,dur:+$('#dur').value,from:$('#from').value,to:$('#to').value,t1:$('#t1').value,t2:$('#t2').value,target:$('#target').value,days:[...document.querySelectorAll('#days input:checked')].map(c=>+c.value),on:true}}
 function save(){
  if(!can('create')&&!can('edit'))return alert('Bạn không có quyền thực hiện thao tác này!');
  const v=val();if(v.type=='video'&&!v.vurl&&!vfileURL)return alert('Hãy nhập link hoặc chọn file video.');
@@ -553,11 +565,11 @@ function html(s){const bg=s.img?`style="background-image:url(${s.img})"`:'',ov=s
  if(s.type=='event'){const k=KINDS[s.kind]||KINDS.other;return`<div class="sl ${ov}" style="${s.img?`background-image:url(${s.img})`:`background:linear-gradient(135deg,${k[2]})`}"><div class="emo">${k[0]}</div><div class="mid">${k[1]}</div><div class="big">${esc(s.title)}</div><div class="mid">${esc(s.sub)}</div><div class="sm2">${esc(s.extra)}</div></div>`}
  if(s.type=='meeting'){const rows=(s.extra||'').split('\n').filter(x=>x.trim()).map(l=>{const p=l.split('|').map(x=>x.trim());return`<div class="mr"><b>${esc(p[0])}</b><span>${esc(p[1])}</span><i>${esc(p[2]||'')}</i></div>`}).join('')||'<div class="mid">Hôm nay không có cuộc họp</div>';
   return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#232526,#414345)"'}><div class="mt"><h3>📅 Lịch họp hôm nay</h3>${rows}</div></div>`}
- const y=s.type=='video'&&yt(s.vurl);if(y)return`<div class="sl" style="background:#000;padding:0"><iframe src="https://www.youtube.com/embed/${y}?autoplay=1&mute=1&controls=0&rel=0&playsinline=1&iv_load_policy=3&origin=${encodeURIComponent(location.origin)}&widget_referrer=${encodeURIComponent(location.href)}" allow="autoplay; encrypted-media" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;inset:0;width:100%;height:100%;border:0"></iframe></div>`;
+ const y=s.type=='video'&&yt(s.vurl);if(y)return`<div class="sl" style="background:#000;padding:0"><iframe id="yt_player" src="https://www.youtube.com/embed/${y}?enablejsapi=1&autoplay=1&mute=1&controls=0&rel=0&playsinline=1" allow="autoplay; encrypted-media" style="position:absolute;inset:0;width:100%;height:100%;border:0"></iframe></div>`;
  if(s.type=='text')return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#0f2027,#2c5364)"'}><div class="emo">📢</div><div class="big">${esc(s.title)}</div><div class="mid" style="white-space:pre-line">${esc(s.extra)}</div></div>`;
  if(s.type=='clock'){const d=new Date();return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#141e30,#243b55)"'}><div class="big" style="font-size:14vw">${d.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}</div><div class="mid">${d.toLocaleDateString('vi-VN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>`}
  if(s.type=='countdown'){return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#7f00ff,#e100ff)"'}><div class="emo">⏳</div><div class="mid" style="font-size:3.5vw;font-weight:700">${esc(s.title)}</div><div id="cd_live_box" style="width:100%"></div><div class="mid" style="font-size:2.2vw">${esc(s.sub)}</div></div>`}
- return`<div class="sl ${ov}" ${bg||'style="background:#000"'}><video id="v" autoplay muted playsinline src="${esc(s.local||s.vurl)}"></video></div>`}
+ return`<div class="sl ${ov}" ${bg||'style="background:#000"'}><video id="v" autoplay playsinline src="${esc(s.local||s.vurl)}"></video></div>`}
 
 function startLiveCountdown(targetStr){
  if(cdInt)clearInterval(cdInt);
@@ -599,7 +611,15 @@ function show(){
  const s=L[cur%L.length];cur++;$('#stage').innerHTML=html(s);
  if(s.type==='countdown')startLiveCountdown(s.target);
  const pg=$('#pg');pg.style.transition='none';pg.style.width='0';
- if(s.type=='video'){const v=$('#v');if(v)v.onended=v.onerror=show;tm=setTimeout(show,(v?Math.max(s.dur,600):s.dur)*1000)}
+ if(s.type=='video'){
+  const v=$('#v');
+  if(v) v.onended=v.onerror=show;
+  const timeoutSec = (s.dur && s.dur > 0) ? s.dur : (v ? 600 : 300);
+  tm=setTimeout(show, timeoutSec * 1000);
+  if(window.YT && window.YT.Player && $('#yt_player')){
+   try{ new YT.Player('yt_player',{events:{'onStateChange':e=>{if(e.data===0)show()}}}); }catch(x){}
+  }
+ }
  else{setTimeout(()=>{pg.style.transition=`width ${s.dur}s linear`;pg.style.width='100%';},50);tm=setTimeout(show,s.dur*1000)}
 }
 function renderSide(){const ms=active().filter(s=>s.type=='meeting').flatMap(s=>(s.extra||'').split('\n').filter(x=>x.trim())).sort();
