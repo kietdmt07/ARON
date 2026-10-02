@@ -2,6 +2,7 @@
 <html lang="vi"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Màn hình truyền thông nội bộ</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 :root{--bg:#f4f6fa;--fg:#1a1d24;--card:#fff;--bd:#dce1ea;--ac:#2f5bea;--mu:#667085;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14161b;--fg:#eceef3;--card:#1e2128;--bd:#333845;--ac:#7b9bff;--mu:#9aa3b5}}
@@ -67,7 +68,22 @@ dialog::backdrop{background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)}
   <div><label>Logo công ty (hiện góc màn hình)</label><input id="logo_in" type="file" accept="image/*"><div class="row" style="margin-top:4px"><span class="hint" id="logost"></span><button id="del_logo" class="sm" style="display:none" onclick="removeLogo()">Xóa logo</button></div></div>
   <div><label>Dòng chữ chạy (thông báo chung)</label><input id="tk_in"></div>
   <div><label>Bố cục màn hình</label><select id="lay"><option value="full">Toàn màn hình (1 vùng)</option><option value="side">Chia vùng: nội dung chính (70%) + cột bên phải (30%)</option></select></div>
-  <div><label>Ghi chú ở cột bên phải (tùy chọn)</label><input id="sidenote" placeholder="VD: Wifi khách: Guest / 12345678"></div></div></div>
+  <div><label>Ghi chú ở cột bên phải (tùy chọn)</label><input id="sidenote" placeholder="VD: Wifi khách: Guest / 12345678"></div>
+  <div style="grid-column:1/-1;border-top:1px solid var(--bd);padding-top:12px;margin-top:6px">
+   <div class="row" style="justify-content:space-between">
+    <b style="font-size:14px">☁️ Kết nối Database Supabase Cloud</b>
+    <span id="sb_status" class="tag">Đang kiểm tra Cloud...</span>
+   </div>
+   <div class="grid" style="gap:10px;margin-top:8px">
+    <div><label>Supabase URL</label><input id="sb_url_in" placeholder="https://xxxx.supabase.co"></div>
+    <div><label>Supabase Anon Key</label><input id="sb_key_in" type="password" placeholder="eyJhbGci..."></div>
+   </div>
+   <div class="row" style="margin-top:8px">
+    <button type="button" class="sm p" onclick="saveSupabaseConfig()">Lưu cấu hình Cloud &amp; Đồng bộ</button>
+    <button type="button" class="sm" onclick="syncNow()">🔄 Đồng bộ ngay</button>
+   </div>
+  </div>
+ </div></div>
  <div class="grid">
   <div class="card"><h2>Danh sách trình chiếu</h2><div id="list"></div><p class="hint" id="empty">Chưa có nội dung. Hãy thêm ở bên phải.</p></div>
   <div class="card" id="add_card"><h2 id="ft">Thêm nội dung</h2>
@@ -145,7 +161,11 @@ dialog::backdrop{background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)}
  <button type="button" class="p" style="margin-top:12px;width:100%" onclick="addUser()">Thêm User mới</button>
  <hr style="border:0;border-top:1px solid var(--bd);margin:16px 0">
  <h3>🔒 Thiết lập Mã PIN Master Quản trị</h3>
- <p class="hint">Dùng mã PIN này để mở khóa nhanh Tivi hoặc chỉnh sửa khi thoát toàn màn hình.</p>
+ <label style="display:flex;align-items:center;gap:8px;margin:10px 0;cursor:pointer;font-weight:bold;background:rgba(255,255,255,0.05);padding:8px 12px;border-radius:6px;border:1px solid var(--bd)">
+  <input type="checkbox" id="pin_enable_chk" style="width:auto" onchange="togglePinLock(this.checked)">
+  Bật khóa bằng Mã PIN khi thoát Tivi (Mặc định: Tắt)
+ </label>
+ <p class="hint">Dùng mã PIN này để mở khóa Tivi hoặc thoát chế độ trình chiếu khi tính năng khóa được bật.</p>
  <div class="row"><input id="master_pin_in" type="password" placeholder="Mã PIN mới (VD: 1234)" style="flex:1"><button type="button" onclick="changePin()">Lưu PIN</button></div>
 </dialog>
 
@@ -179,21 +199,25 @@ const PERMS={
  creator:['create','play'],
  viewer:['play']
 };
-let S={company:'',ticker:'',logo:'',slides:[],users:DEFAULT_USERS,pin:'1234'},edit=null,imgData='',vfileURL='',currentUser=null;
+const DEFAULT_SB_URL = "https://zffyyelruwybpvxevjzw.supabase.co";
+const DEFAULT_SB_KEY = "sb_publishable_MekYFVYuVVZUszEcZq-KCg_oxdvzAft";
+let sbClient=null, lastCloudUpdate=null, isSavingCloud=false;
+
+let S={company:'',ticker:'',logo:'',slides:[],users:DEFAULT_USERS,pin:'1234',pinLockEnabled:false,sbUrl:DEFAULT_SB_URL,sbKey:DEFAULT_SB_KEY},edit=null,imgData='',vfileURL='',currentUser=null;
 try{
  const stored=JSON.parse(localStorage.getItem('sig')||'{}');
  S=Object.assign(S,stored);
  if(!S.users||!S.users.length)S.users=DEFAULT_USERS;
  if(!S.pin&&!S.pinHash)S.pin='1234';
+ if(!S.sbUrl || S.sbUrl.includes('mqyfdhpemocwzuujwpkx'))S.sbUrl=DEFAULT_SB_URL;
+ if(!S.sbKey || S.sbKey.includes('HLs1Db6BSmXTwvlNt7FqrQ'))S.sbKey=DEFAULT_SB_KEY;
 }catch(e){}
 
-// Helper mã hóa SHA-256
 async function sha256(str){
  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
-// Khởi tạo và nâng cấp mã hóa SHA-256 cho toàn bộ tài khoản
 async function initSecurity(){
  let changed=false;
  if(!S.users.some(x=>x.u.toLowerCase()==='admin')){
@@ -216,7 +240,129 @@ async function initSecurity(){
 }
 initSecurity();
 
-function persist(){try{localStorage.setItem('sig',JSON.stringify(S))}catch(e){alert('Bộ nhớ trình duyệt đầy, hãy dùng ảnh nhỏ hơn hoặc xóa bớt nội dung.')}}
+function initSupabase(){
+ const url = (S.sbUrl || DEFAULT_SB_URL).trim();
+ const key = (S.sbKey || DEFAULT_SB_KEY).trim();
+ if(url && key && window.supabase){
+  try {
+   sbClient = window.supabase.createClient(url, key);
+   return true;
+  }catch(e){
+   console.error("Lỗi khởi tạo Supabase:", e);
+  }
+ }
+ sbClient = null;
+ return false;
+}
+
+async function loadFromCloud(){
+ if(!initSupabase()) {
+  if($('#sb_status')) $('#sb_status').textContent = 'Chưa cấu hình Cloud';
+  return false;
+ }
+ try {
+  if($('#sb_status')) $('#sb_status').textContent = 'Đang tải từ Cloud...';
+  let res = await sbClient.from('sig_data').select('value, updated_at').eq('key', 'signage_state').maybeSingle();
+  if(res.error || !res.data){
+   res = await sbClient.from('bc_data').select('value, updated_at').eq('key', 'signage_state').maybeSingle();
+  }
+  if(res.data && res.data.value){
+   lastCloudUpdate = res.data.updated_at;
+   S = Object.assign(S, res.data.value);
+   if(!S.users||!S.users.length)S.users=DEFAULT_USERS;
+   try{ localStorage.setItem('sig', JSON.stringify(S)); }catch(e){}
+   updateUIFields();
+   draw();
+   if($('#sb_status')) $('#sb_status').textContent = 'Đã kết nối Cloud ✔';
+   return true;
+  } else {
+   await saveToCloud();
+  }
+ }catch(e){
+  console.warn("Chưa đọc được dữ liệu Cloud:", e);
+  if($('#sb_status')) $('#sb_status').textContent = 'Dùng Local (Không thể nối Cloud)';
+ }
+ return false;
+}
+
+async function saveToCloud(){
+ try{ localStorage.setItem('sig', JSON.stringify(S)); }catch(e){}
+ if(isSavingCloud || !initSupabase()) return;
+ isSavingCloud = true;
+ try {
+  if($('#sb_status')) $('#sb_status').textContent = 'Đang lưu Cloud...';
+  const nowStr = new Date().toISOString();
+  let { error } = await sbClient.from('sig_data').upsert({ key: 'signage_state', value: S, updated_at: nowStr });
+  if(error){
+   let res2 = await sbClient.from('bc_data').upsert({ key: 'signage_state', value: S, updated_at: nowStr });
+   if(res2.error) throw res2.error;
+  }
+  lastCloudUpdate = nowStr;
+  if($('#sb_status')) $('#sb_status').textContent = 'Đã đồng bộ Cloud ✔';
+ }catch(e){
+  console.error("Lỗi lưu Cloud:", e);
+  if($('#sb_status')) $('#sb_status').textContent = 'Lỗi lưu Cloud (Đã lưu Local)';
+ }finally{
+  isSavingCloud = false;
+ }
+}
+
+function persist(){
+ saveToCloud();
+}
+
+async function saveSupabaseConfig(){
+ const url = $('#sb_url_in').value.trim();
+ const key = $('#sb_key_in').value.trim();
+ S.sbUrl = url;
+ S.sbKey = key;
+ saveToCloud();
+ alert('Đã lưu cấu hình Supabase Cloud & kích hoạt đồng bộ!');
+}
+
+async function syncNow(){
+ const ok = await loadFromCloud();
+ if(ok) alert('Đồng bộ dữ liệu mới nhất từ Supabase Cloud thành công!');
+ else alert('Đã kiểm tra. Không có bản cập nhật mới hoặc không thể kết nối Cloud.');
+}
+
+function updateUIFields(){
+ if($('#co_in')) $('#co_in').value = S.company || '';
+ if($('#tk_in')) $('#tk_in').value = S.ticker || '';
+ if($('#lay')) $('#lay').value = S.lay || 'full';
+ if($('#sidenote')) $('#sidenote').value = S.sidenote || '';
+ if($('#sb_url_in')) $('#sb_url_in').value = S.sbUrl || DEFAULT_SB_URL;
+ if($('#sb_key_in')) $('#sb_key_in').value = S.sbKey || '';
+ if(typeof updateLogoUI === 'function') updateLogoUI();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+ updateUIFields();
+ loadFromCloud();
+});
+
+setInterval(async () => {
+ if(isSavingCloud || !sbClient) return;
+ try {
+  let res = await sbClient.from('sig_data').select('value, updated_at').eq('key', 'signage_state').maybeSingle();
+  if(res.error || !res.data){
+   res = await sbClient.from('bc_data').select('value, updated_at').eq('key', 'signage_state').maybeSingle();
+  }
+  if(res.data && res.data.updated_at && res.data.updated_at !== lastCloudUpdate){
+   lastCloudUpdate = res.data.updated_at;
+   S = Object.assign(S, res.data.value);
+   if(!S.users||!S.users.length)S.users=DEFAULT_USERS;
+   try{ localStorage.setItem('sig', JSON.stringify(S)); }catch(e){}
+   updateUIFields();
+   draw();
+   if(!$('#player').hidden){
+    if(S.logo){$('#player-logo').src=S.logo;$('#player-logo').hidden=false}else{$('#player-logo').hidden=true}
+    $('#co').textContent=S.company||'';
+    $('#tk span').textContent=S.ticker||'';
+   }
+  }
+ }catch(e){}
+}, 6000);
 function can(act){if(!currentUser)return false;return(PERMS[currentUser.role]||[]).includes(act)}
 
 async function login(){
@@ -291,7 +437,13 @@ function openUserModal(){
  if(!can('users'))return alert('Chỉ có Admin mới có quyền quản lý người dùng!');
  renderUserList();
  $('#master_pin_in').value='';
+ $('#pin_enable_chk').checked=!!S.pinLockEnabled;
  $('#user_modal').showModal();
+}
+
+function togglePinLock(v){
+ S.pinLockEnabled=!!v;
+ persist();
 }
 
 function renderUserList(){
@@ -458,7 +610,7 @@ function play(){cur=0;$('#co').textContent=S.company;if(S.logo){$('#player-logo'
  (document.documentElement.requestFullscreen||(()=>{})).call(document.documentElement).catch?.(()=>{});show()}
 
 function stop(){
- if(currentUser && currentUser.role==='viewer'){
+ if(S.pinLockEnabled && currentUser && currentUser.role==='viewer'){
   $('#pin_modal').showModal();
   return;
  }
@@ -466,7 +618,7 @@ function stop(){
 }
 
 async function confirmUnlock(){
- const pin=$('#unlock_pin').value;
+ const pin=$('#unlock_pin').value.trim();
  const pinH=await sha256(pin);
  if(pinH===S.pinHash || pin===(S.pin||'')){
   $('#pin_modal').close();
