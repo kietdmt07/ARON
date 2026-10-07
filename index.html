@@ -90,13 +90,14 @@ dialog::backdrop{background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)}
   <div class="card" id="add_card"><h2 id="ft">Thêm nội dung</h2>
    <label>Loại</label><select id="type" onchange="fields()">
     <option value="welcome">👋 Chào đón khách</option><option value="meeting">📅 Lịch họp hôm nay</option>
-    <option value="event">🎉 Banner sự kiện</option><option value="video">🎬 Video</option><option value="text">📢 Thông báo chữ</option><option value="countdown">⏳ Đếm ngược sự kiện</option><option value="clock">🕒 Đồng hồ &amp; ngày</option></select>
+    <option value="event">🎉 Banner sự kiện</option><option value="video">🎬 Video</option><option value="image">🖼️ Ảnh (toàn màn hình)</option><option value="text">📢 Thông báo chữ</option><option value="countdown">⏳ Đếm ngược sự kiện</option><option value="clock">🕒 Đồng hồ &amp; ngày</option></select>
    <div id="kindbox"><label>Loại sự kiện</label><select id="kind"></select></div>
    <div id="tbox"><label id="tl">Tiêu đề</label><input id="title"></div>
    <div id="sbox"><label id="sl">Phụ đề</label><input id="sub"></div>
    <div id="xbox"><label id="xl">Nội dung</label><textarea id="extra" rows="4"></textarea></div>
-   <div id="ibox"><label>Ảnh nền (tùy chọn)</label><input id="img" type="file" accept="image/*"><div class="row" style="margin-top:4px"><span class="hint" id="imgst"></span><label style="display:inline-flex;align-items:center;gap:4px;margin:0;cursor:pointer"><input type="checkbox" id="imgov" style="width:auto" checked> 🌙 Phủ lớp tối ảnh nền (giúp nổi bật chữ)</label></div></div>
-   <div id="vbox"><label>Link video (.mp4 hoặc link YouTube)</label><input id="vurl" placeholder="https://youtu.be/... hoặc https://.../video.mp4"><label style="display:inline-flex;align-items:center;gap:6px;margin:6px 0;cursor:pointer;font-weight:bold"><input type="checkbox" id="vsound" style="width:auto"> 🔊 Bật âm thanh video (Tắt = Tự phát ổn định, không bị chặn)</label><span class="hint">Với video: Nhập thời gian phát (giây). Để 0 = Tự động chuyển slide khi video phát xong.</span><label>Hoặc chọn file (chỉ dùng trong phiên này)</label><input id="vfile" type="file" accept="video/*"></div>
+   <div id="fitbox" style="display:none"><label>Cách hiển thị ảnh</label><select id="fit"><option value="contain">Vừa khung (thấy toàn bộ ảnh, có thể có viền đen)</option><option value="cover">Phủ kín màn hình (có thể cắt mép ảnh)</option></select></div>
+   <div id="ibox"><label id="il">Ảnh nền (tùy chọn)</label><input id="img" type="file" accept="image/*"><div class="row" style="margin-top:4px"><span class="hint" id="imgst"></span><label style="display:inline-flex;align-items:center;gap:4px;margin:0;cursor:pointer"><input type="checkbox" id="imgov" style="width:auto" checked> 🌙 Phủ lớp tối ảnh nền (giúp nổi bật chữ)</label></div></div>
+   <div id="vbox"><label>Link video (.mp4 hoặc link YouTube)</label><input id="vurl" placeholder="https://youtu.be/... hoặc https://.../video.mp4"><label style="display:inline-flex;align-items:center;gap:6px;margin:6px 0;cursor:pointer;font-weight:bold"><input type="checkbox" id="vsound" style="width:auto"> 🔊 Bật âm thanh video (Tắt = Tự phát ổn định, không bị chặn)</label><label style="display:inline-flex;align-items:center;gap:6px;margin:6px 0;cursor:pointer"><input type="checkbox" id="ytcrop" style="width:auto" checked> ✂️ YouTube: phóng to ~16% để ẩn tên kênh, logo và phụ đề</label><span class="hint">Với video: Nhập thời gian phát (giây). Để 0 = Tự động chuyển slide khi video phát xong.</span><label>Hoặc chọn file (chỉ dùng trong phiên này)</label><input id="vfile" type="file" accept="video/*"></div>
    <div class="grid" style="gap:10px"><div><label id="durlbl">Thời gian hiển thị (giây)</label><input id="dur" type="number" min="0" value="10"></div>
     <div><label>Hiển thị từ ngày</label><input id="from" type="date"></div></div>
    <label>Đến hết ngày (để trống = luôn hiện)</label><input id="to" type="date">
@@ -187,7 +188,7 @@ dialog::backdrop{background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)}
 <script>
 const $=s=>document.querySelector(s),esc=t=>String(t||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const KINDS={birthday:['🎂','Chúc mừng sinh nhật','#ff7eb3,#ff758c'],kickoff:['🚀','Khởi động dự án','#4facfe,#00c6fb'],golive:['✅','Chúc mừng Go-live','#43e97b,#1a9e8f'],client:['🤝','Chào đón khách hàng mới','#fa709a,#f6a623'],team:['🏕️','Team building','#f093fb,#7b5cf0'],trip:['🏖️','Nghỉ dưỡng','#30cfd0,#330867'],sport:['⚽','Sự kiện thể thao','#f7971e,#e0412f'],other:['🎉','Thông báo','#667eea,#764ba2']};
-const LBL={welcome:'Chào khách',meeting:'Lịch họp',event:'Sự kiện',video:'Video',text:'Thông báo',countdown:'Đếm ngược',clock:'Đồng hồ'};
+const LBL={welcome:'Chào khách',meeting:'Lịch họp',event:'Sự kiện',video:'Video',image:'Ảnh',text:'Thông báo',countdown:'Đếm ngược',clock:'Đồng hồ'};
 const DEFAULT_USERS=[
  {u:'admin',hash:'240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',role:'admin'},
  {u:'editor',hash:'ef5e5a1fb95055e0e56cccf98a41e784a132c14e7f6e1ba244302f0e72b29baf',role:'editor'},
@@ -511,7 +512,7 @@ $('#logo_in').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new I
 function removeLogo(){delete S.logo;$('#logo_in').value='';persist();updateLogoUI()}
 
 function fields(){const t=$('#type').value,sh=(id,v)=>$(id).style.display=v?'':'none';
- sh('#kindbox',t=='event');sh('#tbox',!['meeting','video','clock'].includes(t));sh('#sbox',['welcome','event','countdown'].includes(t));sh('#xbox',['welcome','meeting','text'].includes(t));sh('#ibox',true);sh('#vbox',t=='video');sh('#cbox',t=='countdown');
+ sh('#kindbox',t=='event');sh('#tbox',!['meeting','video','clock','image'].includes(t));sh('#fitbox',t=='image');$('#il').textContent=t=='image'?'Chọn ảnh (hiển thị toàn màn hình)':'Ảnh nền (tùy chọn)';sh('#sbox',['welcome','event','countdown'].includes(t));sh('#xbox',['welcome','meeting','text'].includes(t));sh('#ibox',true);sh('#vbox',t=='video');sh('#cbox',t=='countdown');
  $('#tl').textContent=t=='welcome'?'Tên công ty khách':'Tiêu đề';$('#sl').textContent=t=='welcome'?'Tên khách / người tham dự':'Tên người / nhóm / dự án';
  $('#xl').textContent=t=='meeting'?'Mỗi dòng một cuộc họp: Giờ | Nội dung | Phòng':'Lời nhắn thêm';
  if(t=='video'){
@@ -525,12 +526,12 @@ function fields(){const t=$('#type').value,sh=(id,v)=>$(id).style.display=v?'':'
 fields();
 $('#days').innerHTML=['CN','T2','T3','T4','T5','T6','T7'].map((d,i)=>`<label style="display:inline-flex;gap:4px;margin:0;align-items:center"><input type="checkbox" style="width:auto" value="${i}" checked>${d}</label>`).join('');
 function setDays(a){document.querySelectorAll('#days input').forEach(c=>c.checked=!a||a.includes(+c.value))}
-$('#img').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{const r=Math.min(1,1600/im.width),c=document.createElement('canvas');c.width=im.width*r;c.height=im.height*r;c.getContext('2d').drawImage(im,0,0,c.width,c.height);imgData=c.toDataURL('image/jpeg',.8);$('#imgst').textContent='Đã chọn ảnh ✔'};im.src=URL.createObjectURL(f)};
+$('#img').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{const W=$('#type').value=='image'?2560:1600,r=Math.min(1,W/im.width),c=document.createElement('canvas');c.width=im.width*r;c.height=im.height*r;c.getContext('2d').drawImage(im,0,0,c.width,c.height);imgData=c.toDataURL('image/jpeg',W>2000?.88:.8);$('#imgst').textContent='Đã chọn ảnh ✔'};im.src=URL.createObjectURL(f)};
 $('#vfile').onchange=e=>{const f=e.target.files[0];if(f){vfileURL=URL.createObjectURL(f);$('#vurl').value='(file: '+f.name+')'}};
-function val(){return{type:$('#type').value,kind:$('#kind').value,title:$('#title').value,sub:$('#sub').value,extra:$('#extra').value,img:imgData,imgov:$('#imgov')?!!$('#imgov').checked:true,vurl:$('#vurl').value.startsWith('(file')?'':$('#vurl').value,dur:+$('#dur').value,sound:!!$('#vsound').checked,from:$('#from').value,to:$('#to').value,t1:$('#t1').value,t2:$('#t2').value,target:$('#target').value,days:[...document.querySelectorAll('#days input:checked')].map(c=>+c.value),on:true}}
+function val(){return{type:$('#type').value,kind:$('#kind').value,title:$('#title').value,sub:$('#sub').value,extra:$('#extra').value,img:imgData,imgov:$('#imgov')?!!$('#imgov').checked:true,vurl:$('#vurl').value.startsWith('(file')?'':$('#vurl').value,dur:+$('#dur').value,sound:!!$('#vsound').checked,ytcrop:!!$('#ytcrop').checked,fit:$('#fit').value,from:$('#from').value,to:$('#to').value,t1:$('#t1').value,t2:$('#t2').value,target:$('#target').value,days:[...document.querySelectorAll('#days input:checked')].map(c=>+c.value),on:true}}
 function save(){
  if(!can('create')&&!can('edit'))return alert('Bạn không có quyền thực hiện thao tác này!');
- const v=val();if(v.type=='video'&&!v.vurl&&!vfileURL)return alert('Hãy nhập link hoặc chọn file video.');
+ const v=val();if(v.type=='image'&&!v.img)return alert('Hãy chọn ảnh.');if(v.type=='video'&&!v.vurl&&!vfileURL)return alert('Hãy nhập link hoặc chọn file video.');
  if(v.type=='video'&&vfileURL&&!v.vurl)v.local=vfileURL;
  if(edit!==null){
   if(!can('edit'))return alert('Bạn không có quyền chỉnh sửa nội dung!');
@@ -541,10 +542,10 @@ function save(){
  }
  persist();reset();draw();
 }
-function reset(){edit=null;imgData='';vfileURL='';$('#ft').textContent='Thêm nội dung';['title','sub','extra','vurl','from','to','t1','t2','target'].forEach(i=>$('#'+i).value='');setDays();$('#imgst').textContent='';$('#img').value='';$('#vfile').value='';if($('#imgov'))$('#imgov').checked=true;if($('#vsound'))$('#vsound').checked=false;$('#dur').value=10}
+function reset(){edit=null;if($('#ytcrop'))$('#ytcrop').checked=true;imgData='';vfileURL='';$('#ft').textContent='Thêm nội dung';['title','sub','extra','vurl','from','to','t1','t2','target'].forEach(i=>$('#'+i).value='');setDays();$('#imgst').textContent='';$('#img').value='';$('#vfile').value='';if($('#imgov'))$('#imgov').checked=true;if($('#vsound'))$('#vsound').checked=false;$('#dur').value=10}
 function ed(i){
  if(!can('edit'))return alert('Bạn không có quyền chỉnh sửa!');
- const s=S.slides[i];edit=i;$('#ft').textContent='Chỉnh sửa';$('#type').value=s.type;fields();$('#kind').value=s.kind;['title','sub','extra','dur','from','to','t1','t2','target'].forEach(k=>$('#'+k).value=s[k]||'');setDays(s.days);$('#vurl').value=s.vurl||'';if($('#vsound'))$('#vsound').checked=!!s.sound;if($('#imgov'))$('#imgov').checked=s.imgov!==false;imgData=s.img||'';$('#imgst').textContent=imgData?'Giữ ảnh hiện tại':'';scrollTo(0,0);
+ const s=S.slides[i];edit=i;$('#ft').textContent='Chỉnh sửa';$('#type').value=s.type;fields();$('#kind').value=s.kind;['title','sub','extra','dur','from','to','t1','t2','target'].forEach(k=>$('#'+k).value=s[k]||'');setDays(s.days);$('#vurl').value=s.vurl||'';if($('#vsound'))$('#vsound').checked=!!s.sound;if($('#ytcrop'))$('#ytcrop').checked=s.ytcrop!==false;if($('#fit'))$('#fit').value=s.fit||'contain';if($('#imgov'))$('#imgov').checked=s.imgov!==false;imgData=s.img||'';$('#imgst').textContent=imgData?'Giữ ảnh hiện tại':'';scrollTo(0,0);
 }
 function mv(i,d){
  if(!can('edit'))return;
@@ -573,7 +574,8 @@ function html(s){const bg=s.img?`style="background-image:url(${s.img})"`:'',ov=(
  if(s.type=='event'){const k=KINDS[s.kind]||KINDS.other;return`<div class="sl ${ov}" style="${s.img?`background-image:url(${s.img})`:`background:linear-gradient(135deg,${k[2]})`}"><div class="emo">${k[0]}</div><div class="mid">${k[1]}</div><div class="big">${esc(s.title)}</div><div class="mid">${esc(s.sub)}</div><div class="sm2">${esc(s.extra)}</div></div>`}
  if(s.type=='meeting'){const rows=(s.extra||'').split('\n').filter(x=>x.trim()).map(l=>{const p=l.split('|').map(x=>x.trim());return`<div class="mr"><b>${esc(p[0])}</b><span>${esc(p[1])}</span><i>${esc(p[2]||'')}</i></div>`}).join('')||'<div class="mid">Hôm nay không có cuộc họp</div>';
   return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#232526,#414345)"'}><div class="mt"><h3>📅 Lịch họp hôm nay</h3>${rows}</div></div>`}
- const y=s.type=='video'&&yt(s.vurl);if(y){const mP=s.sound?0:1;return`<div class="sl" style="background:#000;padding:0"><iframe id="yt_player" src="https://www.youtube.com/embed/${y}?enablejsapi=1&autoplay=1&mute=${mP}&controls=0&rel=0&playsinline=1" allow="autoplay; encrypted-media" style="position:absolute;inset:0;width:100%;height:100%;border:0"></iframe></div>`;}
+ if(s.type=='image')return s.img?`<div class="sl" style="padding:0;background:#000 url(${s.img}) center/${s.fit==='cover'?'cover':'contain'} no-repeat"></div>`:'<div class="sl"><div class="mid">Chưa có ảnh</div></div>';
+ const y=s.type=='video'&&yt(s.vurl);if(y){const mP=s.sound?0:1;return`<div class="sl" style="background:#000;padding:0;overflow:hidden"><iframe id="yt_player" src="https://www.youtube.com/embed/${y}?enablejsapi=1&autoplay=1&mute=${mP}&controls=0&rel=0&playsinline=1&cc_load_policy=0&iv_load_policy=3&disablekb=1&fs=0&modestbranding=1" allow="autoplay; encrypted-media" style="position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none;transform:scale(${s.ytcrop===false?1:1.16})"></iframe></div>`;}
  if(s.type=='text')return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#0f2027,#2c5364)"'}><div class="emo">📢</div><div class="big">${esc(s.title)}</div><div class="mid" style="white-space:pre-line">${esc(s.extra)}</div></div>`;
  if(s.type=='clock'){const d=new Date();return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#141e30,#243b55)"'}><div class="big" style="font-size:14vw">${d.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}</div><div class="mid">${d.toLocaleDateString('vi-VN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>`}
  if(s.type=='countdown'){return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#7f00ff,#e100ff)"'}><div class="emo">⏳</div><div class="mid" style="font-size:3.5vw;font-weight:700">${esc(s.title)}</div><div id="cd_live_box" style="width:100%"></div><div class="mid" style="font-size:2.2vw">${esc(s.sub)}</div></div>`}
@@ -625,7 +627,7 @@ function show(){
   const timeoutSec = (s.dur && s.dur > 0) ? s.dur : (v ? 600 : 300);
   tm=setTimeout(show, timeoutSec * 1000);
   if(window.YT && window.YT.Player && $('#yt_player')){
-   try{ new YT.Player('yt_player',{events:{'onStateChange':e=>{if(e.data===0)show()},'onError':e=>{console.warn('YouTube Error:',e.data);setTimeout(show,3000)}}}); }catch(x){}
+   try{ new YT.Player('yt_player',{events:{'onReady':e=>{try{e.target.unloadModule('captions');e.target.unloadModule('cc')}catch(_){}},'onStateChange':e=>{if(e.data===1){try{e.target.unloadModule('captions');e.target.unloadModule('cc')}catch(_){}}if(e.data===0)show()},'onError':e=>{console.warn('YouTube Error:',e.data);setTimeout(show,3000)}}}); }catch(x){}
   }
  }
  else{setTimeout(()=>{pg.style.transition=`width ${s.dur}s linear`;pg.style.width='100%';},50);tm=setTimeout(show,s.dur*1000)}
