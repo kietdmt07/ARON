@@ -95,7 +95,7 @@ dialog::backdrop{background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)}
    <div id="tbox"><label id="tl">Tiêu đề</label><input id="title"></div>
    <div id="sbox"><label id="sl">Phụ đề</label><input id="sub"></div>
    <div id="xbox"><label id="xl">Nội dung</label><textarea id="extra" rows="4"></textarea></div>
-   <div id="ibox"><label>Ảnh nền (tùy chọn)</label><input id="img" type="file" accept="image/*"><span class="hint" id="imgst"></span></div>
+   <div id="ibox"><label>Ảnh nền (tùy chọn)</label><input id="img" type="file" accept="image/*"><div class="row" style="margin-top:4px"><span class="hint" id="imgst"></span><label style="display:inline-flex;align-items:center;gap:4px;margin:0;cursor:pointer"><input type="checkbox" id="imgov" style="width:auto" checked> 🌙 Phủ lớp tối ảnh nền (giúp nổi bật chữ)</label></div></div>
    <div id="vbox"><label>Link video (.mp4 hoặc link YouTube)</label><input id="vurl" placeholder="https://youtu.be/... hoặc https://.../video.mp4"><label style="display:inline-flex;align-items:center;gap:6px;margin:6px 0;cursor:pointer;font-weight:bold"><input type="checkbox" id="vsound" style="width:auto"> 🔊 Bật âm thanh video (Tắt = Tự phát ổn định, không bị chặn)</label><span class="hint">Với video: Nhập thời gian phát (giây). Để 0 = Tự động chuyển slide khi video phát xong.</span><label>Hoặc chọn file (chỉ dùng trong phiên này)</label><input id="vfile" type="file" accept="video/*"></div>
    <div class="grid" style="gap:10px"><div><label id="durlbl">Thời gian hiển thị (giây)</label><input id="dur" type="number" min="0" value="10"></div>
     <div><label>Hiển thị từ ngày</label><input id="from" type="date"></div></div>
@@ -370,21 +370,29 @@ setInterval(async () => {
 function can(act){if(!currentUser)return false;return(PERMS[currentUser.role]||[]).includes(act)}
 
 async function login(){
+ $('#l_err').style.display='none';
  const u=$('#l_u').value.trim(), p=$('#l_p').value;
+ if(!u && !p){
+  $('#l_err').textContent='Vui lòng nhập tên đăng nhập và mật khẩu!';
+  $('#l_err').style.display='block';
+  return;
+ }
  const h=await sha256(p);
- const found=S.users.find(x=>x.u===u && (x.hash ? x.hash===h : x.p===p));
+ const found = u ? S.users.find(x=>x.u===u && (x.hash ? x.hash===h : x.p===p)) : null;
  if(found){
   currentUser=found;
   $('#login_overlay').style.display='none';
   applyPermissions();
- }else if(h===(S.pinHash||'') || p===(S.pin||'')){
+  return;
+ }
+ if(p && S.pinHash && h===S.pinHash){
   currentUser={u:'admin_pin',role:'admin'};
   $('#login_overlay').style.display='none';
   applyPermissions();
- }else{
-  $('#l_err').textContent='Tên đăng nhập hoặc mật khẩu không đúng!';
-  $('#l_err').style.display='block';
+  return;
  }
+ $('#l_err').textContent='Tên đăng nhập hoặc mật khẩu không đúng!';
+ $('#l_err').style.display='block';
 }
 
 function loginTV(){
@@ -519,7 +527,7 @@ $('#days').innerHTML=['CN','T2','T3','T4','T5','T6','T7'].map((d,i)=>`<label sty
 function setDays(a){document.querySelectorAll('#days input').forEach(c=>c.checked=!a||a.includes(+c.value))}
 $('#img').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{const r=Math.min(1,1600/im.width),c=document.createElement('canvas');c.width=im.width*r;c.height=im.height*r;c.getContext('2d').drawImage(im,0,0,c.width,c.height);imgData=c.toDataURL('image/jpeg',.8);$('#imgst').textContent='Đã chọn ảnh ✔'};im.src=URL.createObjectURL(f)};
 $('#vfile').onchange=e=>{const f=e.target.files[0];if(f){vfileURL=URL.createObjectURL(f);$('#vurl').value='(file: '+f.name+')'}};
-function val(){return{type:$('#type').value,kind:$('#kind').value,title:$('#title').value,sub:$('#sub').value,extra:$('#extra').value,img:imgData,vurl:$('#vurl').value.startsWith('(file')?'':$('#vurl').value,dur:+$('#dur').value,sound:!!$('#vsound').checked,from:$('#from').value,to:$('#to').value,t1:$('#t1').value,t2:$('#t2').value,target:$('#target').value,days:[...document.querySelectorAll('#days input:checked')].map(c=>+c.value),on:true}}
+function val(){return{type:$('#type').value,kind:$('#kind').value,title:$('#title').value,sub:$('#sub').value,extra:$('#extra').value,img:imgData,imgov:$('#imgov')?!!$('#imgov').checked:true,vurl:$('#vurl').value.startsWith('(file')?'':$('#vurl').value,dur:+$('#dur').value,sound:!!$('#vsound').checked,from:$('#from').value,to:$('#to').value,t1:$('#t1').value,t2:$('#t2').value,target:$('#target').value,days:[...document.querySelectorAll('#days input:checked')].map(c=>+c.value),on:true}}
 function save(){
  if(!can('create')&&!can('edit'))return alert('Bạn không có quyền thực hiện thao tác này!');
  const v=val();if(v.type=='video'&&!v.vurl&&!vfileURL)return alert('Hãy nhập link hoặc chọn file video.');
@@ -533,10 +541,10 @@ function save(){
  }
  persist();reset();draw();
 }
-function reset(){edit=null;imgData='';vfileURL='';$('#ft').textContent='Thêm nội dung';['title','sub','extra','vurl','from','to','t1','t2','target'].forEach(i=>$('#'+i).value='');setDays();$('#imgst').textContent='';$('#img').value='';$('#vfile').value='';$('#vsound').checked=false;$('#dur').value=10}
+function reset(){edit=null;imgData='';vfileURL='';$('#ft').textContent='Thêm nội dung';['title','sub','extra','vurl','from','to','t1','t2','target'].forEach(i=>$('#'+i).value='');setDays();$('#imgst').textContent='';$('#img').value='';$('#vfile').value='';if($('#imgov'))$('#imgov').checked=true;if($('#vsound'))$('#vsound').checked=false;$('#dur').value=10}
 function ed(i){
  if(!can('edit'))return alert('Bạn không có quyền chỉnh sửa!');
- const s=S.slides[i];edit=i;$('#ft').textContent='Chỉnh sửa';$('#type').value=s.type;fields();$('#kind').value=s.kind;['title','sub','extra','dur','from','to','t1','t2','target'].forEach(k=>$('#'+k).value=s[k]||'');setDays(s.days);$('#vurl').value=s.vurl||'';$('#vsound').checked=!!s.sound;imgData=s.img||'';$('#imgst').textContent=imgData?'Giữ ảnh hiện tại':'';scrollTo(0,0);
+ const s=S.slides[i];edit=i;$('#ft').textContent='Chỉnh sửa';$('#type').value=s.type;fields();$('#kind').value=s.kind;['title','sub','extra','dur','from','to','t1','t2','target'].forEach(k=>$('#'+k).value=s[k]||'');setDays(s.days);$('#vurl').value=s.vurl||'';if($('#vsound'))$('#vsound').checked=!!s.sound;if($('#imgov'))$('#imgov').checked=s.imgov!==false;imgData=s.img||'';$('#imgst').textContent=imgData?'Giữ ảnh hiện tại':'';scrollTo(0,0);
 }
 function mv(i,d){
  if(!can('edit'))return;
@@ -560,7 +568,7 @@ let L=[],cur=0,tm,cdInt=null;
 const today=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
 function active(){const n=new Date(),hm=n.toTimeString().slice(0,5);return S.slides.filter(s=>s.on&&(!s.from||s.from<=today())&&(!s.to||s.to>=today())&&(!s.days||s.days.includes(n.getDay()))&&(!s.t1||s.t1<=hm)&&(!s.t2||s.t2>=hm))}
 const yt=u=>{const m=String(u||'').match(/(?:youtu\.be\/|v=|embed\/|shorts\/|live\/)([\w-]{11})/);return m&&m[1]};
-function html(s){const bg=s.img?`style="background-image:url(${s.img})"`:'',ov=s.img?'ov':'';
+function html(s){const bg=s.img?`style="background-image:url(${s.img})"`:'',ov=(s.img&&s.imgov!==false)?'ov':'';
  if(s.type=='welcome')return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#1e3c72,#2a5298)"'}><div class="mid">Kính chào quý khách</div><div class="big">${esc(s.title)}</div><div class="mid">${esc(s.sub)}</div><div class="sm2">${esc(s.extra)}</div></div>`;
  if(s.type=='event'){const k=KINDS[s.kind]||KINDS.other;return`<div class="sl ${ov}" style="${s.img?`background-image:url(${s.img})`:`background:linear-gradient(135deg,${k[2]})`}"><div class="emo">${k[0]}</div><div class="mid">${k[1]}</div><div class="big">${esc(s.title)}</div><div class="mid">${esc(s.sub)}</div><div class="sm2">${esc(s.extra)}</div></div>`}
  if(s.type=='meeting'){const rows=(s.extra||'').split('\n').filter(x=>x.trim()).map(l=>{const p=l.split('|').map(x=>x.trim());return`<div class="mr"><b>${esc(p[0])}</b><span>${esc(p[1])}</span><i>${esc(p[2]||'')}</i></div>`}).join('')||'<div class="mid">Hôm nay không có cuộc họp</div>';
@@ -639,8 +647,9 @@ function stop(){
 
 async function confirmUnlock(){
  const pin=$('#unlock_pin').value.trim();
+ if(!pin) return alert('Vui lòng nhập mã PIN!');
  const pinH=await sha256(pin);
- if(pinH===S.pinHash || pin===(S.pin||'')){
+ if(S.pinHash && pinH===S.pinHash){
   $('#pin_modal').close();
   $('#unlock_pin').value='';
   clearTimeout(tm);if(cdInt){clearInterval(cdInt);cdInt=null}$('#player').hidden=true;$('#stage').innerHTML='';if(document.fullscreenElement)document.exitFullscreen();
