@@ -71,20 +71,6 @@ dialog::backdrop{background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)}
   <div><label>Dòng chữ chạy (thông báo chung)</label><input id="tk_in"></div>
   <div><label>Bố cục màn hình</label><select id="lay"><option value="full">Toàn màn hình (1 vùng)</option><option value="side">Chia vùng: nội dung chính (70%) + cột bên phải (30%)</option></select></div>
   <div><label>Ghi chú ở cột bên phải (tùy chọn)</label><input id="sidenote" placeholder="VD: Wifi khách: Guest / 12345678"></div>
-  <div style="grid-column:1/-1;border-top:1px solid var(--bd);padding-top:12px;margin-top:6px;display:none">
-   <div class="row" style="justify-content:space-between">
-    <b style="font-size:14px">☁️ Kết nối Database Supabase Cloud</b>
-    <span id="sb_status" class="tag">Đang kiểm tra Cloud...</span>
-   </div>
-   <div class="grid" style="gap:10px;margin-top:8px">
-    <div><label>Supabase URL</label><input id="sb_url_in" placeholder="https://xxxx.supabase.co"></div>
-    <div><label>Supabase Anon Key</label><input id="sb_key_in" type="password" placeholder="eyJhbGci..."></div>
-   </div>
-   <div class="row" style="margin-top:8px">
-    <button type="button" class="sm p" onclick="saveSupabaseConfig()">Lưu cấu hình Cloud &amp; Đồng bộ</button>
-    <button type="button" class="sm" onclick="syncNow()">🔄 Đồng bộ ngay</button>
-   </div>
-  </div>
  </div></div>
  <div class="grid">
   <div class="card"><h2>Danh sách trình chiếu</h2><div id="list"></div><p class="hint" id="empty">Chưa có nội dung. Hãy thêm ở bên phải.</p></div>
@@ -112,16 +98,30 @@ dialog::backdrop{background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)}
 <!-- MODAL LOGIN OVERLAY -->
 <div id="login_overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:99;display:flex;align-items:center;justify-content:center;padding:20px">
  <div class="card" style="width:100%;max-width:380px;box-shadow:0 12px 36px rgba(0,0,0,0.5)">
-  <h2 style="text-align:center;margin-bottom:16px">🔐 Đăng nhập Signage</h2>
-  <label>Tên đăng nhập</label>
-  <input id="l_u" placeholder="Tên đăng nhập">
-  <label style="margin-top:10px">Mật khẩu</label>
-  <input id="l_p" type="password" placeholder="Mật khẩu">
-  <div style="margin-top:18px;display:flex;gap:10px">
-   <button class="p" style="flex:1" onclick="login()">Đăng nhập</button>
-   <button onclick="loginTV()" style="background:#222;color:#fff;border-color:#444">📺 Chế độ Tivi</button>
+  <div id="login_box">
+   <h2 style="text-align:center;margin-bottom:16px">🔐 Đăng nhập Signage</h2>
+   <label>Tên đăng nhập</label>
+   <input id="l_u" placeholder="Tên đăng nhập" autocomplete="username">
+   <label style="margin-top:10px">Mật khẩu</label>
+   <input id="l_p" type="password" placeholder="Mật khẩu" autocomplete="current-password">
+   <div style="margin-top:18px;display:flex;gap:10px">
+    <button class="p" style="flex:1" onclick="login()">Đăng nhập</button>
+    <button onclick="loginTV()" style="background:#222;color:#fff;border-color:#444">📺 Chế độ Tivi</button>
+   </div>
+   <p id="l_err" style="color:#ff4d4f;font-size:13px;margin-top:12px;text-align:center;display:none"></p>
   </div>
-  <p id="l_err" style="color:#ff4d4f;font-size:13px;margin-top:12px;text-align:center;display:none"></p>
+  <div id="setup_box" style="display:none">
+   <h2 style="text-align:center;margin-bottom:8px">🛠️ Thiết lập lần đầu</h2>
+   <p class="hint" style="margin-bottom:8px">Hệ thống chưa có tài khoản quản trị. Hãy tạo mật khẩu cho tài khoản <b>admin</b>.</p>
+   <label>Tên đăng nhập</label>
+   <input value="admin" disabled>
+   <label style="margin-top:10px">Mật khẩu (tối thiểu 8 ký tự)</label>
+   <input id="s_p1" type="password" placeholder="Mật khẩu mới" autocomplete="new-password">
+   <label style="margin-top:10px">Nhập lại mật khẩu</label>
+   <input id="s_p2" type="password" placeholder="Nhập lại mật khẩu" autocomplete="new-password">
+   <div style="margin-top:18px"><button class="p" style="width:100%" onclick="setupAdmin()">Tạo tài khoản Admin</button></div>
+   <p id="s_err" style="color:#ff4d4f;font-size:13px;margin-top:12px;text-align:center;display:none"></p>
+  </div>
  </div>
 </div>
 
@@ -151,7 +151,7 @@ dialog::backdrop{background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)}
  <h3>➕ Thêm User mới</h3>
  <div class="grid" style="gap:10px;margin-bottom:10px">
   <div><label>Tên đăng nhập</label><input id="new_u_name" placeholder="VD: nhanvien1"></div>
-  <div><label>Mật khẩu</label><input id="new_u_pass" type="password" placeholder="••••••"></div>
+  <div><label>Mật khẩu</label><input id="new_u_pass" type="password" placeholder="Tối thiểu 8 ký tự" autocomplete="new-password"></div>
  </div>
  <div><label>Vai trò (Role / Quyền hạn)</label>
   <select id="new_u_role">
@@ -169,7 +169,7 @@ dialog::backdrop{background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)}
   Bật khóa bằng Mã PIN khi thoát Tivi (Mặc định: Tắt)
  </label>
  <p class="hint">Dùng mã PIN này để mở khóa Tivi hoặc thoát chế độ trình chiếu khi tính năng khóa được bật.</p>
- <div class="row"><input id="master_pin_in" type="password" placeholder="Mã PIN mới (VD: 1234)" style="flex:1"><button type="button" onclick="changePin()">Lưu PIN</button></div>
+ <div class="row"><input id="master_pin_in" type="password" placeholder="Mã PIN mới (tối thiểu 4 ký tự)" style="flex:1"><button type="button" onclick="changePin()">Lưu PIN</button></div>
 </dialog>
 
 <!-- MODAL KHÓA MÃ PIN TRÊN TIVI -->
@@ -187,36 +187,65 @@ dialog::backdrop{background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)}
  <div id="bar"><span id="co"></span><span id="tk"><span></span></span><span id="clock"></span></div></div>
 
 <script>
-const $=s=>document.querySelector(s),esc=t=>String(t||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $=s=>document.querySelector(s),esc=t=>String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const KINDS={birthday:['🎂','Chúc mừng sinh nhật','#ff7eb3,#ff758c'],kickoff:['🚀','Khởi động dự án','#4facfe,#00c6fb'],golive:['✅','Chúc mừng Go-live','#43e97b,#1a9e8f'],client:['🤝','Chào đón khách hàng mới','#fa709a,#f6a623'],team:['🏕️','Team building','#f093fb,#7b5cf0'],trip:['🏖️','Nghỉ dưỡng','#30cfd0,#330867'],sport:['⚽','Sự kiện thể thao','#f7971e,#e0412f'],other:['🎉','Thông báo','#667eea,#764ba2']};
 const LBL={welcome:'Chào khách',meeting:'Lịch họp',event:'Sự kiện',video:'Video',image:'Ảnh',text:'Thông báo',countdown:'Đếm ngược',clock:'Đồng hồ'};
-const DEFAULT_USERS=[
- {u:'admin',hash:'240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',role:'admin'},
- {u:'editor',hash:'ef5e5a1fb95055e0e56cccf98a41e784a132c14e7f6e1ba244302f0e72b29baf',role:'editor'},
- {u:'creator',hash:'756bf2effa2464565bab831d15a6a12d0fb1e7701294480c379b17f9c1064d0d',role:'creator'},
- {u:'tivi',hash:'69480439fad39953627375d42598cca4ebab5421be733acae4c25f7b96031452',role:'viewer'}
-];
-const DEFAULT_PIN_HASH = '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4';
+// Các hash mặc định cũ (SHA-256) từng nằm trong source => coi như đã lộ.
+// Tài khoản / PIN nào còn dùng đúng hash này sẽ bị loại bỏ khi nạp dữ liệu; lần truy cập đầu sẽ yêu cầu tạo Admin mới.
+const LEGACY_DEFAULT_HASHES=['240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9','ef5e5a1fb95055e0e56cccf98a41e784a132c14e7f6e1ba244302f0e72b29baf','756bf2effa2464565bab831d15a6a12d0fb1e7701294480c379b17f9c1064d0d','69480439fad39953627375d42598cca4ebab5421be733acae4c25f7b96031452'];
+const LEGACY_PIN_HASH='03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4';
 const PERMS={
  admin:['create','edit','delete','settings','users','export','play'],
  editor:['create','edit','export','play'],
  creator:['create','play'],
  viewer:['play']
 };
-const DEFAULT_SB_URL = "https://celqybfrjzrxvhlhtrqo.supabase.co";
-const DEFAULT_SB_KEY = "sb_publishable_oxu9CsROYb_POoS7z7bwkw_hgejeEBC";
-let sbClient=null, lastCloudUpdate=null, isSavingCloud=false;
+// Cấu hình kết nối cố định trong code, KHÔNG lưu trong dữ liệu đồng bộ (tránh bị đổi hướng sang server khác)
+const SB_URL="https://celqybfrjzrxvhlhtrqo.supabase.co";
+const SB_KEY="sb_publishable_oxu9CsROYb_POoS7z7bwkw_hgejeEBC";
+// Chỉ nhận các trường này từ cloud / file nhập / localStorage
+const STATE_KEYS=['company','ticker','logo','slides','users','pinHash','pinLockEnabled','lay','sidenote'];
+let sbClient=null, lastCloudUpdate=null, isSavingCloud=false, cloudChecked=false, cloudReady=false;
 
-let S={company:'',ticker:'',logo:'',slides:[],users:DEFAULT_USERS,pinHash:DEFAULT_PIN_HASH,pinLockEnabled:false,sbUrl:DEFAULT_SB_URL,sbKey:DEFAULT_SB_KEY},edit=null,imgData='',vfileURL='',currentUser=null;
-try{
- const stored=JSON.parse(localStorage.getItem('sig')||'{}');
- S=Object.assign(S,stored);
- if(!S.users||!S.users.length)S.users=DEFAULT_USERS;
- if(!S.pinHash)S.pinHash=DEFAULT_PIN_HASH;
- delete S.pin;
- if(!S.sbUrl || S.sbUrl.includes('mqyfdhpemocwzuujwpkx') || S.sbUrl.includes('zffyyelruwybpvxevjzw'))S.sbUrl=DEFAULT_SB_URL;
- if(!S.sbKey || S.sbKey.includes('HLs1Db6BSmXTwvlNt7FqrQ') || S.sbKey.includes('MekYFVYuVVZUszEcZq'))S.sbKey=DEFAULT_SB_KEY;
-}catch(e){}
+let S={company:'',ticker:'',logo:'',slides:[],users:[],pinHash:'',pinLockEnabled:false},edit=null,imgData='',vfileURL='',currentUser=null;
+
+// Chỉ cho phép ảnh data:image base64 hoặc http(s) không chứa ký tự phá cú pháp CSS/HTML
+function safeImg(u){
+ if(typeof u!=='string')return '';
+ if(/^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+\/=]+$/.test(u))return u;
+ if(/^https?:\/\/[^\s"'()<>\\]+$/i.test(u))return u;
+ return '';
+}
+function safeMedia(u){
+ if(typeof u!=='string')return '';
+ u=u.trim();
+ return /^(https?:|blob:)/i.test(u)?u:'';
+}
+function cleanUsers(a){
+ if(!Array.isArray(a))return [];
+ return a.filter(x=>x&&typeof x.u==='string'&&x.u&&!LEGACY_DEFAULT_HASHES.includes(x.hash))
+  .map(x=>{
+   const o={u:x.u,role:Object.prototype.hasOwnProperty.call(PERMS,x.role)?x.role:'viewer'};
+   if(x.hash)o.hash=String(x.hash);else if(typeof x.p==='string')o.p=x.p;
+   return o;
+  });
+}
+function normalizeState(){
+ S.users=cleanUsers(S.users);
+ if(typeof S.pinHash!=='string'||S.pinHash===LEGACY_PIN_HASH)S.pinHash='';
+ S.pinLockEnabled=!!S.pinLockEnabled;
+ if(!Array.isArray(S.slides))S.slides=[];
+ if(S.logo&&!safeImg(S.logo))delete S.logo;
+}
+function mergeState(val){
+ if(!val||typeof val!=='object')return;
+ for(const k of STATE_KEYS){
+  if(Object.prototype.hasOwnProperty.call(val,k))S[k]=val[k];
+ }
+ normalizeState();
+}
+try{ mergeState(JSON.parse(localStorage.getItem('sig')||'{}')); }catch(e){}
+normalizeState();
 
 async function sha256(str){
  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
@@ -224,26 +253,14 @@ async function sha256(str){
 }
 
 async function sanitizeStateHashes(){
- if(!S.users||!S.users.length)S.users=DEFAULT_USERS;
- for(let u of S.users){
+ for(const u of S.users){
   if(u.p){
    if(!u.hash) u.hash=await sha256(u.p);
    delete u.p;
   }
  }
- if(S.pin){
-  if(!S.pinHash) S.pinHash=await sha256(S.pin);
-  delete S.pin;
- }
 }
-
-async function initSecurity(){
- await sanitizeStateHashes();
- if(!S.users.some(x=>x.u.toLowerCase()==='admin')){
-  S.users.unshift({u:'admin',hash:'240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',role:'admin'});
- }
-}
-initSecurity();
+const secReady=sanitizeStateHashes();
 
 let realtimeSub = null;
 
@@ -255,13 +272,10 @@ function setCloudStatus(text, ok){
   b.style.color = (ok === true || ok === false) ? '#fff' : 'var(--mu)';
   b.style.borderColor = ok === true ? '#2e7d32' : (ok === false ? '#c62828' : 'var(--bd)');
  }
- const s = $('#sb_status');
- if(s) s.textContent = text;
 }
 
 function initSupabase(){
- const url = (S.sbUrl || DEFAULT_SB_URL).trim();
- const key = (S.sbKey || DEFAULT_SB_KEY).trim();
+ const url = SB_URL, key = SB_KEY;
  if(url && key && window.supabase){
   try {
    if(!sbClient || sbClient.supabaseUrl !== url){
@@ -308,11 +322,11 @@ function subscribeRealtime(){
 function applyCloudData(val, updated_at){
  if(!val) return;
  lastCloudUpdate = updated_at;
- S = Object.assign(S, val);
- if(!S.users || !S.users.length) S.users = DEFAULT_USERS;
+ mergeState(val);
  try { localStorage.setItem('sig', JSON.stringify(S)); }catch(e){}
  updateUIFields();
  draw();
+ refreshLoginMode();
  if(!$('#player').hidden){
   if(S.logo){$('#player-logo').src=S.logo;$('#player-logo').hidden=false}else{$('#player-logo').hidden=true}
   $('#co').textContent=S.company||'';
@@ -324,14 +338,14 @@ function applyCloudData(val, updated_at){
 async function loadFromCloud(force){
  if(!initSupabase()) {
   setCloudStatus('⚠️ Cloud: Chưa cấu hình', null);
+  cloudChecked=true; refreshLoginMode();
   return false;
  }
  try {
   setCloudStatus('☁️ Đang kiểm tra Cloud...', null);
-  let res = await sbClient.from('sig_data').select('value, updated_at').eq('key', 'signage_state').maybeSingle();
-  if(res.error || !res.data){
-   res = await sbClient.from('bc_data').select('value, updated_at').eq('key', 'signage_state').maybeSingle();
-  }
+  const res = await sbClient.from('sig_data').select('value, updated_at').eq('key', 'signage_state').maybeSingle();
+  if(res.error) throw res.error;
+  cloudReady = true;
   if(res.data && res.data.value){
    applyCloudData(res.data.value, res.data.updated_at);
    return true;
@@ -342,6 +356,8 @@ async function loadFromCloud(force){
  }catch(e){
   console.warn("Chưa đọc được dữ liệu Cloud:", e);
   setCloudStatus('⚠️ Cloud: Mất kết nối (Dùng Local)', false);
+ }finally{
+  cloudChecked=true; refreshLoginMode();
  }
  return false;
 }
@@ -350,10 +366,8 @@ async function loadFromCloud(force){
 async function checkLightweightUpdate(){
  if(isSavingCloud || !sbClient) return;
  try {
-  let res = await sbClient.from('sig_data').select('updated_at').eq('key', 'signage_state').maybeSingle();
-  if(res.error || !res.data){
-   res = await sbClient.from('bc_data').select('updated_at').eq('key', 'signage_state').maybeSingle();
-  }
+  const res = await sbClient.from('sig_data').select('updated_at').eq('key', 'signage_state').maybeSingle();
+  if(res.error) throw res.error;
   if(res.data && res.data.updated_at){
    setCloudStatus('☁️ Cloud: Đã kết nối ✔', true);
    if(res.data.updated_at !== lastCloudUpdate){
@@ -377,11 +391,8 @@ async function saveToCloud(){
  try {
   setCloudStatus('☁️ Đang lưu lên Cloud...', null);
   const nowStr = new Date().toISOString();
-  let { error } = await sbClient.from('sig_data').upsert({ key: 'signage_state', value: S, updated_at: nowStr });
-  if(error){
-   let res2 = await sbClient.from('bc_data').upsert({ key: 'signage_state', value: S, updated_at: nowStr });
-   if(res2.error) throw res2.error;
-  }
+  const { error } = await sbClient.from('sig_data').upsert({ key: 'signage_state', value: S, updated_at: nowStr });
+  if(error) throw error;
   lastCloudUpdate = nowStr;
   setCloudStatus('☁️ Cloud: Đã đồng bộ ✔', true);
  }catch(e){
@@ -396,19 +407,6 @@ function persist(){
  saveToCloud();
 }
 
-async function saveSupabaseConfig(){
- const url = $('#sb_url_in').value.trim();
- const key = $('#sb_key_in').value.trim();
- S.sbUrl = url;
- S.sbKey = key;
- if(sbClient){
-  try{ sbClient.removeAllChannels(); }catch(e){}
-  sbClient = null;
- }
- saveToCloud();
- alert('Đã lưu cấu hình Supabase Cloud & kích hoạt đồng bộ!');
-}
-
 async function syncNow(){
  const ok = await loadFromCloud(true);
  if(ok) alert('Đồng bộ dữ liệu mới nhất từ Supabase Cloud thành công!');
@@ -420,13 +418,12 @@ function updateUIFields(){
  if($('#tk_in')) $('#tk_in').value = S.ticker || '';
  if($('#lay')) $('#lay').value = S.lay || 'full';
  if($('#sidenote')) $('#sidenote').value = S.sidenote || '';
- if($('#sb_url_in')) $('#sb_url_in').value = S.sbUrl || DEFAULT_SB_URL;
- if($('#sb_key_in')) $('#sb_key_in').value = S.sbKey || '';
  if(typeof updateLogoUI === 'function') updateLogoUI();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
  updateUIFields();
+ refreshLoginMode();
  loadFromCloud();
 });
 
@@ -434,24 +431,44 @@ document.addEventListener('DOMContentLoaded', () => {
 setInterval(checkLightweightUpdate, 30000);
 function can(act){if(!currentUser)return false;return(PERMS[currentUser.role]||[]).includes(act)}
 
+function refreshLoginMode(){
+ const setup = cloudChecked && !S.users.length;
+ const sb=$('#setup_box'), lb=$('#login_box');
+ if(sb) sb.style.display = setup ? '' : 'none';
+ if(lb) lb.style.display = setup ? 'none' : '';
+}
+
+async function setupAdmin(){
+ const err=$('#s_err'); err.style.display='none';
+ const fail=m=>{err.textContent=m;err.style.display='block'};
+ if(S.users.length) return refreshLoginMode();
+ if(!cloudReady) return fail('Chưa kết nối được Cloud nên chưa thể tạo tài khoản. Kiểm tra mạng rồi tải lại trang.');
+ const p1=$('#s_p1').value, p2=$('#s_p2').value;
+ if(p1.length<8) return fail('Mật khẩu phải từ 8 ký tự trở lên!');
+ if(p1!==p2) return fail('Hai mật khẩu không khớp!');
+ const hash=await sha256(p1);
+ if(LEGACY_DEFAULT_HASHES.includes(hash)) return fail('Mật khẩu này quá phổ biến, hãy chọn mật khẩu khác!');
+ S.users=[{u:'admin',hash,role:'admin'}];
+ persist();
+ $('#s_p1').value='';$('#s_p2').value='';
+ currentUser=S.users[0];
+ $('#login_overlay').style.display='none';
+ applyPermissions();
+}
+
 async function login(){
  $('#l_err').style.display='none';
  const u=$('#l_u').value.trim(), p=$('#l_p').value;
- if(!u && !p){
+ if(!u || !p){
   $('#l_err').textContent='Vui lòng nhập tên đăng nhập và mật khẩu!';
   $('#l_err').style.display='block';
   return;
  }
+ await secReady;
  const h=await sha256(p);
- const found = u ? S.users.find(x=>x.u===u && (x.hash ? x.hash===h : x.p===p)) : null;
+ const found = u ? S.users.find(x=>x.u.toLowerCase()===u.toLowerCase() && (x.hash ? x.hash===h : x.p===p)) : null;
  if(found){
   currentUser=found;
-  $('#login_overlay').style.display='none';
-  applyPermissions();
-  return;
- }
- if(p && S.pinHash && h===S.pinHash){
-  currentUser={u:'admin_pin',role:'admin'};
   $('#login_overlay').style.display='none';
   applyPermissions();
   return;
@@ -472,6 +489,7 @@ function logout(){
  $('#login_overlay').style.display='flex';
  $('#l_err').style.display='none';
  $('#l_u').value='';$('#l_p').value='';
+ refreshLoginMode();
 }
 
 function applyPermissions(){
@@ -495,7 +513,7 @@ async function changeMyPassword(){
  const oldH=await sha256(oldP);
  if(currentUser.hash && oldH!==currentUser.hash)return alert('Mật khẩu hiện tại không chính xác!');
  if(newP!==confP)return alert('Xác nhận mật khẩu mới không khớp!');
- if(newP.length<4)return alert('Mật khẩu mới phải từ 4 ký tự trở lên!');
+ if(newP.length<8)return alert('Mật khẩu mới phải từ 8 ký tự trở lên!');
  
  const newH=await sha256(newP);
  currentUser.hash=newH;
@@ -519,6 +537,10 @@ function openUserModal(){
 }
 
 function togglePinLock(v){
+ if(v && !S.pinHash){
+  $('#pin_enable_chk').checked=false;
+  return alert('Hãy đặt Mã PIN trước rồi mới bật khóa!');
+ }
  S.pinLockEnabled=!!v;
  persist();
 }
@@ -526,7 +548,7 @@ function togglePinLock(v){
 function renderUserList(){
  $('#user_list_box').innerHTML=S.users.map((u,i)=>`
   <div class="it" style="justify-content:space-between">
-   <div><b>${esc(u.u)}</b> <span class="tag">${u.role.toUpperCase()}</span></div>
+   <div><b>${esc(u.u)}</b> <span class="tag">${esc(String(u.role).toUpperCase())}</span></div>
    ${u.u.toLowerCase()==='admin'?'<span class="tag" style="background:var(--ac);color:#fff;font-weight:bold">BẤT BIẾN</span>':`<button class="sm" style="color:#ff4d4f" onclick="deleteUser(${i})">Xóa</button>`}
   </div>
  `).join('');
@@ -535,6 +557,7 @@ function renderUserList(){
 async function addUser(){
  const u=$('#new_u_name').value.trim(), p=$('#new_u_pass').value, r=$('#new_u_role').value;
  if(!u||!p)return alert('Vui lòng nhập tên đăng nhập và mật khẩu!');
+ if(p.length<8)return alert('Mật khẩu phải từ 8 ký tự trở lên!');
  if(u.toLowerCase()==='admin')return alert('Tên đăng nhập "admin" là tài khoản hệ thống bất biến!');
  if(S.users.some(x=>x.u.toLowerCase()===u.toLowerCase()))return alert('Tên đăng nhập này đã tồn tại!');
  const hash=await sha256(p);
@@ -560,6 +583,8 @@ function deleteUser(i){
 async function changePin(){
  const pin=$('#master_pin_in').value.trim();
  if(!pin)return alert('Vui lòng nhập mã PIN mới');
+ if(pin.length<4)return alert('Mã PIN phải từ 4 ký tự trở lên!');
+ if(['1234','0000','1111','123456','000000','111111'].includes(pin))return alert('Mã PIN này quá dễ đoán, hãy chọn mã khác!');
  S.pinHash=await sha256(pin);
  delete S.pin;
  persist();
@@ -595,7 +620,9 @@ $('#vfile').onchange=e=>{const f=e.target.files[0];if(f){vfileURL=URL.createObje
 function val(){return{type:$('#type').value,kind:$('#kind').value,title:$('#title').value,sub:$('#sub').value,extra:$('#extra').value,img:imgData,imgov:$('#imgov')?!!$('#imgov').checked:true,vurl:$('#vurl').value.startsWith('(file')?'':$('#vurl').value,dur:+$('#dur').value,sound:!!$('#vsound').checked,ytcrop:!!$('#ytcrop').checked,fit:$('#fit').value,from:$('#from').value,to:$('#to').value,t1:$('#t1').value,t2:$('#t2').value,target:$('#target').value,days:[...document.querySelectorAll('#days input:checked')].map(c=>+c.value),on:true}}
 function save(){
  if(!can('create')&&!can('edit'))return alert('Bạn không có quyền thực hiện thao tác này!');
- const v=val();if(v.type=='image'&&!v.img)return alert('Hãy chọn ảnh.');if(v.type=='video'&&!v.vurl&&!vfileURL)return alert('Hãy nhập link hoặc chọn file video.');
+ const v=val();if(v.type=='image'&&!v.img)return alert('Hãy chọn ảnh.');
+ if(v.type!='video'&&!(v.dur>0))return alert('Thời gian hiển thị phải lớn hơn 0 giây.');
+ if(v.type=='video'&&v.vurl&&!yt(v.vurl)&&!safeMedia(v.vurl))return alert('Link video phải bắt đầu bằng http:// hoặc https://');if(v.type=='video'&&!v.vurl&&!vfileURL)return alert('Hãy nhập link hoặc chọn file video.');
  if(v.type=='video'&&vfileURL&&!v.vurl)v.local=vfileURL;
  if(edit!==null){
   if(!can('edit'))return alert('Bạn không có quyền chỉnh sửa nội dung!');
@@ -621,29 +648,29 @@ function draw(){
   const editBtn=can('edit')?`<button class="sm" onclick="ed(${i})">Sửa</button>`:'';
   const delBtn=can('delete')?`<button class="sm" onclick="if(confirm('Xóa?')){S.slides.splice(${i},1);persist();draw()}">Xóa</button>`:'';
   const chkDis=can('edit')?'':'disabled';
-  return `<div class="it ${s.on?'':'off'}"><input type="checkbox" style="width:auto" ${s.on?'checked':''} ${chkDis} onchange="S.slides[${i}].on=this.checked;persist();draw()"><span class="tag">${LBL[s.type]}</span><span class="t">${esc(s.title||s.vurl||LBL[s.type])}</span><button class="sm" onclick="mv(${i},-1)">↑</button><button class="sm" onclick="mv(${i},1)">↓</button>${editBtn}${delBtn}</div>`;
+  return `<div class="it ${s.on?'':'off'}"><input type="checkbox" style="width:auto" ${s.on?'checked':''} ${chkDis} onchange="S.slides[${i}].on=this.checked;persist();draw()"><span class="tag">${esc(LBL[s.type]||s.type)}</span><span class="t">${esc(s.title||s.vurl||LBL[s.type])}</span><button class="sm" onclick="mv(${i},-1)">↑</button><button class="sm" onclick="mv(${i},1)">↓</button>${editBtn}${delBtn}</div>`;
  }).join('');
 }
 draw();
 function exp(){if(!can('export'))return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download='signage.json';a.click()}
-$('#imp').onchange=e=>{if(!can('export'))return;const r=new FileReader();r.onload=()=>{try{S=Object.assign(S,JSON.parse(r.result));persist();location.reload()}catch(x){alert('File không hợp lệ')}};r.readAsText(e.target.files[0])};
+$('#imp').onchange=e=>{if(!can('export'))return;const r=new FileReader();r.onload=()=>{try{mergeState(JSON.parse(r.result));persist();location.reload()}catch(x){alert('File không hợp lệ')}};r.readAsText(e.target.files[0])};
 
 /* PLAYER */
 let L=[],cur=0,tm,cdInt=null;
 const today=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
 function active(){const n=new Date(),hm=n.toTimeString().slice(0,5);return S.slides.filter(s=>s.on&&(!s.from||s.from<=today())&&(!s.to||s.to>=today())&&(!s.days||s.days.includes(n.getDay()))&&(!s.t1||s.t1<=hm)&&(!s.t2||s.t2>=hm))}
 const yt=u=>{const m=String(u||'').match(/(?:youtu\.be\/|v=|embed\/|shorts\/|live\/)([\w-]{11})/);return m&&m[1]};
-function html(s){const bg=s.img?`style="background-image:url(${s.img})"`:'',ov=(s.img&&s.imgov!==false)?'ov':'';
+function html(s){const im=safeImg(s.img),bg=im?`style="background-image:url(${im})"`:'',ov=(im&&s.imgov!==false)?'ov':'';
  if(s.type=='welcome')return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#1e3c72,#2a5298)"'}><div class="mid">Kính chào quý khách</div><div class="big">${esc(s.title)}</div><div class="mid">${esc(s.sub)}</div><div class="sm2">${esc(s.extra)}</div></div>`;
- if(s.type=='event'){const k=KINDS[s.kind]||KINDS.other;return`<div class="sl ${ov}" style="${s.img?`background-image:url(${s.img})`:`background:linear-gradient(135deg,${k[2]})`}"><div class="emo">${k[0]}</div><div class="mid">${k[1]}</div><div class="big">${esc(s.title)}</div><div class="mid">${esc(s.sub)}</div><div class="sm2">${esc(s.extra)}</div></div>`}
+ if(s.type=='event'){const k=KINDS[s.kind]||KINDS.other;return`<div class="sl ${ov}" style="${im?`background-image:url(${im})`:`background:linear-gradient(135deg,${k[2]})`}"><div class="emo">${k[0]}</div><div class="mid">${k[1]}</div><div class="big">${esc(s.title)}</div><div class="mid">${esc(s.sub)}</div><div class="sm2">${esc(s.extra)}</div></div>`}
  if(s.type=='meeting'){const rows=(s.extra||'').split('\n').filter(x=>x.trim()).map(l=>{const p=l.split('|').map(x=>x.trim());return`<div class="mr"><b>${esc(p[0])}</b><span>${esc(p[1])}</span><i>${esc(p[2]||'')}</i></div>`}).join('')||'<div class="mid">Hôm nay không có cuộc họp</div>';
   return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#232526,#414345)"'}><div class="mt"><h3>📅 Lịch họp hôm nay</h3>${rows}</div></div>`}
- if(s.type=='image')return s.img?`<div class="sl" style="padding:0;background:#000 url(${s.img}) center/${s.fit==='cover'?'cover':'contain'} no-repeat"></div>`:'<div class="sl"><div class="mid">Chưa có ảnh</div></div>';
+ if(s.type=='image')return im?`<div class="sl" style="padding:0;background:#000 url(${im}) center/${s.fit==='cover'?'cover':'contain'} no-repeat"></div>`:'<div class="sl"><div class="mid">Chưa có ảnh</div></div>';
  const y=s.type=='video'&&yt(s.vurl);if(y){const mP=s.sound?0:1;return`<div class="sl" style="background:#000;padding:0;overflow:hidden"><iframe id="yt_player" src="https://www.youtube.com/embed/${y}?enablejsapi=1&autoplay=1&mute=${mP}&controls=0&rel=0&playsinline=1&cc_load_policy=0&iv_load_policy=3&disablekb=1&fs=0&modestbranding=1" allow="autoplay; encrypted-media" style="position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none;transform:scale(${s.ytcrop===false?1:1.16})"></iframe></div>`;}
  if(s.type=='text')return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#0f2027,#2c5364)"'}><div class="emo">📢</div><div class="big">${esc(s.title)}</div><div class="mid" style="white-space:pre-line">${esc(s.extra)}</div></div>`;
  if(s.type=='clock'){const d=new Date();return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#141e30,#243b55)"'}><div class="big" style="font-size:14vw">${d.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}</div><div class="mid">${d.toLocaleDateString('vi-VN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>`}
  if(s.type=='countdown'){return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#7f00ff,#e100ff)"'}><div class="emo">⏳</div><div class="mid" style="font-size:3.5vw;font-weight:700">${esc(s.title)}</div><div id="cd_live_box" style="width:100%"></div><div class="mid" style="font-size:2.2vw">${esc(s.sub)}</div></div>`}
- const mutedAttr=s.sound?'':'muted';return`<div class="sl ${ov}" ${bg||'style="background:#000"'}><video id="v" autoplay ${mutedAttr} playsinline src="${esc(s.local||s.vurl)}"></video></div>`}
+ const mutedAttr=s.sound?'':'muted';return`<div class="sl ${ov}" ${bg||'style="background:#000"'}><video id="v" autoplay ${mutedAttr} playsinline src="${esc(safeMedia(s.local||s.vurl))}"></video></div>`}
 
 function startLiveCountdown(targetStr){
  if(cdInt)clearInterval(cdInt);
@@ -694,17 +721,17 @@ function show(){
    try{ new YT.Player('yt_player',{events:{'onReady':e=>{try{e.target.unloadModule('captions');e.target.unloadModule('cc')}catch(_){}},'onStateChange':e=>{if(e.data===1){try{e.target.unloadModule('captions');e.target.unloadModule('cc')}catch(_){}}if(e.data===0)show()},'onError':e=>{console.warn('YouTube Error:',e.data);setTimeout(show,3000)}}}); }catch(x){}
   }
  }
- else{setTimeout(()=>{pg.style.transition=`width ${s.dur}s linear`;pg.style.width='100%';},50);tm=setTimeout(show,s.dur*1000)}
+ else{const secs=Math.max(1,+s.dur||10);setTimeout(()=>{pg.style.transition=`width ${secs}s linear`;pg.style.width='100%';},50);tm=setTimeout(show,secs*1000)}
 }
 function renderSide(){const ms=active().filter(s=>s.type=='meeting').flatMap(s=>(s.extra||'').split('\n').filter(x=>x.trim())).sort();
 $('#side').innerHTML='<div class="c" id="sc"></div><div class="d" id="sd"></div>'+(ms.length?'<h4>📅 Lịch họp hôm nay</h4>'+ms.map(l=>{const p=l.split('|').map(x=>x.trim());return`<div class="m"><b>${esc(p[0])}</b>${esc(p[1])}<i>${esc(p[2])}</i></div>`}).join(''):'')+(S.sidenote?`<div class="n">${esc(S.sidenote)}</div>`:'');tick()}
 function tick(){const n=new Date(),a=$('#sc');if(a){a.textContent=n.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});$('#sd').textContent=n.toLocaleDateString('vi-VN',{weekday:'long',day:'numeric',month:'long'})}}
 function clk(){tick();$('#clock').textContent=new Date().toLocaleString('vi-VN',{weekday:'long',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
-function play(){cur=0;$('#co').textContent=S.company;if(S.logo){$('#player-logo').src=S.logo;$('#player-logo').hidden=false}else{$('#player-logo').hidden=true}$('#tk span').textContent=S.ticker||'';$('#player').hidden=false;clk();setInterval(clk,20000);
+function play(){cur=0;$('#co').textContent=S.company;if(safeImg(S.logo)){$('#player-logo').src=S.logo;$('#player-logo').hidden=false}else{$('#player-logo').hidden=true}$('#tk span').textContent=S.ticker||'';$('#player').hidden=false;clk();setInterval(clk,20000);
  (document.documentElement.requestFullscreen||(()=>{})).call(document.documentElement).catch?.(()=>{});show()}
 
 function stop(){
- if(S.pinLockEnabled && currentUser && currentUser.role==='viewer'){
+ if(S.pinLockEnabled && S.pinHash && currentUser && currentUser.role==='viewer'){
   $('#pin_modal').showModal();
   return;
  }
@@ -719,8 +746,7 @@ async function confirmUnlock(){
   $('#pin_modal').close();
   $('#unlock_pin').value='';
   clearTimeout(tm);if(cdInt){clearInterval(cdInt);cdInt=null}$('#player').hidden=true;$('#stage').innerHTML='';if(document.fullscreenElement)document.exitFullscreen();
-  currentUser={u:'admin_pin',role:'admin'};
-  applyPermissions();
+  logout(); // PIN chỉ dùng để thoát chế độ Tivi, không cấp quyền quản trị
  }else{
   alert('Mã PIN không đúng!');
  }
