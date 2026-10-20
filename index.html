@@ -2,7 +2,10 @@
 <html lang="vi"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Màn hình truyền thông nội bộ</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.youtube.com https://s.ytimg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; connect-src 'self' https://celqybfrjzrxvhlhtrqo.supabase.co wss://celqybfrjzrxvhlhtrqo.supabase.co; frame-src https://www.youtube.com https://www.youtube-nocookie.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<!-- Ghim phiên bản cố định + SRI: nếu file trên CDN bị sửa, trình duyệt sẽ từ chối chạy -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.0/dist/umd/supabase.js" integrity="sha256-LbKRLxaTmjshtHKYCnradGszpqQHCLxVXLC+JVxutbE=" crossorigin="anonymous"></script>
 <script src="https://www.youtube.com/iframe_api"></script>
 <style>
 :root{--bg:#f4f6fa;--fg:#1a1d24;--card:#fff;--bd:#dce1ea;--ac:#2f5bea;--mu:#667085;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -98,30 +101,25 @@ dialog::backdrop{background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)}
 <!-- MODAL LOGIN OVERLAY -->
 <div id="login_overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:99;display:flex;align-items:center;justify-content:center;padding:20px">
  <div class="card" style="width:100%;max-width:380px;box-shadow:0 12px 36px rgba(0,0,0,0.5)">
-  <div id="login_box">
+  <form id="login_box" method="post" action="#" autocomplete="on" onsubmit="event.preventDefault();login()">
    <h2 style="text-align:center;margin-bottom:16px">🔐 Đăng nhập Signage</h2>
-   <label>Tên đăng nhập</label>
-   <input id="l_u" placeholder="Tên đăng nhập" autocomplete="username">
-   <label style="margin-top:10px">Mật khẩu</label>
-   <input id="l_p" type="password" placeholder="Mật khẩu" autocomplete="current-password">
+   <label for="l_u">Email</label>
+   <input id="l_u" name="email" type="email" placeholder="email@congty.com" autocomplete="username" required>
+   <label for="l_p" style="margin-top:10px">Mật khẩu</label>
+   <div style="position:relative">
+    <input id="l_p" name="password" type="password" placeholder="Mật khẩu" autocomplete="current-password" required style="padding-right:42px">
+    <button type="button" id="l_eye" onclick="togglePwVisible()" title="Hiện/ẩn mật khẩu" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:transparent;padding:4px 8px">👁️</button>
+   </div>
+   <label style="display:flex;align-items:center;gap:8px;margin:12px 0 0;cursor:pointer;color:var(--fg)">
+    <input type="checkbox" id="l_remember" style="width:auto" checked> Ghi nhớ đăng nhập trên máy này
+   </label>
+   <p class="hint" style="margin:4px 0 0 24px;font-size:12px">Bỏ chọn nếu dùng máy chung: đóng trình duyệt là tự đăng xuất.</p>
    <div style="margin-top:18px;display:flex;gap:10px">
-    <button class="p" style="flex:1" onclick="login()">Đăng nhập</button>
-    <button onclick="loginTV()" style="background:#222;color:#fff;border-color:#444">📺 Chế độ Tivi</button>
+    <button type="submit" id="l_btn" class="p" style="flex:1">Đăng nhập</button>
+    <button type="button" onclick="loginTV()" style="background:#222;color:#fff;border-color:#444">📺 Chế độ Tivi</button>
    </div>
    <p id="l_err" style="color:#ff4d4f;font-size:13px;margin-top:12px;text-align:center;display:none"></p>
-  </div>
-  <div id="setup_box" style="display:none">
-   <h2 style="text-align:center;margin-bottom:8px">🛠️ Thiết lập lần đầu</h2>
-   <p class="hint" style="margin-bottom:8px">Hệ thống chưa có tài khoản quản trị. Hãy tạo mật khẩu cho tài khoản <b>admin</b>.</p>
-   <label>Tên đăng nhập</label>
-   <input value="admin" disabled>
-   <label style="margin-top:10px">Mật khẩu (tối thiểu 8 ký tự)</label>
-   <input id="s_p1" type="password" placeholder="Mật khẩu mới" autocomplete="new-password">
-   <label style="margin-top:10px">Nhập lại mật khẩu</label>
-   <input id="s_p2" type="password" placeholder="Nhập lại mật khẩu" autocomplete="new-password">
-   <div style="margin-top:18px"><button class="p" style="width:100%" onclick="setupAdmin()">Tạo tài khoản Admin</button></div>
-   <p id="s_err" style="color:#ff4d4f;font-size:13px;margin-top:12px;text-align:center;display:none"></p>
-  </div>
+  </form>
  </div>
 </div>
 
@@ -150,17 +148,17 @@ dialog::backdrop{background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)}
  <hr style="border:0;border-top:1px solid var(--bd);margin:16px 0">
  <h3>➕ Thêm User mới</h3>
  <div class="grid" style="gap:10px;margin-bottom:10px">
-  <div><label>Tên đăng nhập</label><input id="new_u_name" placeholder="VD: nhanvien1"></div>
+  <div><label>Email</label><input id="new_u_name" type="email" placeholder="VD: nhanvien1@congty.com"></div>
   <div><label>Mật khẩu</label><input id="new_u_pass" type="password" placeholder="Tối thiểu 8 ký tự" autocomplete="new-password"></div>
  </div>
  <div><label>Vai trò (Role / Quyền hạn)</label>
   <select id="new_u_role">
    <option value="admin">👑 Admin (Toàn quyền: Tạo, Sửa, Xóa, Quản lý User, Cài đặt)</option>
    <option value="editor">✏️ Editor (Quyền Tạo mới &amp; Chỉnh sửa slide)</option>
-   <option value="creator">➕ Creator (Chỉ có quyền Tạo mới slide)</option>
-   <option value="viewer">📺 Viewer / Tivi (Chỉ xem trình chiếu, khóa hoàn toàn sửa)</option>
+   <option value="creator" selected>➕ Creator (Chỉ có quyền Tạo mới slide)</option>
   </select>
  </div>
+ <p class="hint">Tivi không cần tài khoản: bấm "📺 Chế độ Tivi" hoặc mở link có <code>?tv=1</code>.</p>
  <button type="button" class="p" style="margin-top:12px;width:100%" onclick="addUser()">Thêm User mới</button>
  <hr style="border:0;border-top:1px solid var(--bd);margin:16px 0">
  <h3>🔒 Thiết lập Mã PIN Master Quản trị</h3>
@@ -190,24 +188,22 @@ dialog::backdrop{background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)}
 const $=s=>document.querySelector(s),esc=t=>String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const KINDS={birthday:['🎂','Chúc mừng sinh nhật','#ff7eb3,#ff758c'],kickoff:['🚀','Khởi động dự án','#4facfe,#00c6fb'],golive:['✅','Chúc mừng Go-live','#43e97b,#1a9e8f'],client:['🤝','Chào đón khách hàng mới','#fa709a,#f6a623'],team:['🏕️','Team building','#f093fb,#7b5cf0'],trip:['🏖️','Nghỉ dưỡng','#30cfd0,#330867'],sport:['⚽','Sự kiện thể thao','#f7971e,#e0412f'],other:['🎉','Thông báo','#667eea,#764ba2']};
 const LBL={welcome:'Chào khách',meeting:'Lịch họp',event:'Sự kiện',video:'Video',image:'Ảnh',text:'Thông báo',countdown:'Đếm ngược',clock:'Đồng hồ'};
-// Các hash mặc định cũ (SHA-256) từng nằm trong source => coi như đã lộ.
-// Tài khoản / PIN nào còn dùng đúng hash này sẽ bị loại bỏ khi nạp dữ liệu; lần truy cập đầu sẽ yêu cầu tạo Admin mới.
-const LEGACY_DEFAULT_HASHES=['240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9','ef5e5a1fb95055e0e56cccf98a41e784a132c14e7f6e1ba244302f0e72b29baf','756bf2effa2464565bab831d15a6a12d0fb1e7701294480c379b17f9c1064d0d','69480439fad39953627375d42598cca4ebab5421be733acae4c25f7b96031452'];
-const LEGACY_PIN_HASH='03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4';
+// Phân quyền hiển thị trên giao diện. Quyền THẬT được kiểm tra ở server (RLS + trigger sig_data_guard).
 const PERMS={
  admin:['create','edit','delete','settings','users','export','play'],
  editor:['create','edit','export','play'],
  creator:['create','play'],
- viewer:['play']
+ viewer:['play'],
+ none:['play']
 };
-// Cấu hình kết nối cố định trong code, KHÔNG lưu trong dữ liệu đồng bộ (tránh bị đổi hướng sang server khác)
+// Publishable key được phép công khai; an toàn nhờ RLS trên Supabase.
 const SB_URL="https://celqybfrjzrxvhlhtrqo.supabase.co";
 const SB_KEY="sb_publishable_oxu9CsROYb_POoS7z7bwkw_hgejeEBC";
-// Chỉ nhận các trường này từ cloud / file nhập / localStorage
-const STATE_KEYS=['company','ticker','logo','slides','users','pinHash','pinLockEnabled','lay','sidenote'];
-let sbClient=null, lastCloudUpdate=null, isSavingCloud=false, cloudChecked=false, cloudReady=false;
+// Chỉ nhận/lưu các trường này. KHÔNG còn users / pinHash trong dữ liệu chung.
+const STATE_KEYS=['company','ticker','logo','slides','pinLockEnabled','lay','sidenote'];
+let sbClient=null, lastCloudUpdate=null, isSavingCloud=false, pendingSave=false, saveTimer=null, cloudChecked=false, cloudReady=false;
 
-let S={company:'',ticker:'',logo:'',slides:[],users:[],pinHash:'',pinLockEnabled:false},edit=null,imgData='',vfileURL='',currentUser=null;
+let S={company:'',ticker:'',logo:'',slides:[],pinLockEnabled:false},edit=null,imgData='',vfileURL='',currentUser=null;
 
 // Chỉ cho phép ảnh data:image base64 hoặc http(s) không chứa ký tự phá cú pháp CSS/HTML
 function safeImg(u){
@@ -221,22 +217,23 @@ function safeMedia(u){
  u=u.trim();
  return /^(https?:|blob:)/i.test(u)?u:'';
 }
-function cleanUsers(a){
- if(!Array.isArray(a))return [];
- return a.filter(x=>x&&typeof x.u==='string'&&x.u&&!LEGACY_DEFAULT_HASHES.includes(x.hash))
-  .map(x=>{
-   const o={u:x.u,role:Object.prototype.hasOwnProperty.call(PERMS,x.role)?x.role:'viewer'};
-   if(x.hash)o.hash=String(x.hash);else if(typeof x.p==='string')o.p=x.p;
-   return o;
-  });
-}
 function normalizeState(){
- S.users=cleanUsers(S.users);
- if(typeof S.pinHash!=='string'||S.pinHash===LEGACY_PIN_HASH)S.pinHash='';
+ delete S.users;delete S.pinHash;delete S.pin;
  S.pinLockEnabled=!!S.pinLockEnabled;
  if(!Array.isArray(S.slides))S.slides=[];
+ // Dữ liệu hỏng không được làm sập player
+ S.slides=S.slides.filter(s=>s&&typeof s==='object'&&typeof s.type==='string');
+ S.slides.forEach(s=>{if(s.days!=null&&!Array.isArray(s.days))s.days=null});
  if(S.logo&&!safeImg(S.logo))delete S.logo;
 }
+// Bản sạch để lưu (bỏ blob: video cục bộ vì chỉ có giá trị trên máy này)
+function publicState(){
+ const o={};
+ for(const k of STATE_KEYS)if(S[k]!==undefined)o[k]=S[k];
+ o.slides=(S.slides||[]).map(s=>{const c={...s};delete c.local;return c});
+ return o;
+}
+function saveLocal(){try{localStorage.setItem('sig',JSON.stringify(publicState()))}catch(e){}}
 function mergeState(val){
  if(!val||typeof val!=='object')return;
  for(const k of STATE_KEYS){
@@ -246,21 +243,7 @@ function mergeState(val){
 }
 try{ mergeState(JSON.parse(localStorage.getItem('sig')||'{}')); }catch(e){}
 normalizeState();
-
-async function sha256(str){
- const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
- return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-}
-
-async function sanitizeStateHashes(){
- for(const u of S.users){
-  if(u.p){
-   if(!u.hash) u.hash=await sha256(u.p);
-   delete u.p;
-  }
- }
-}
-const secReady=sanitizeStateHashes();
+saveLocal(); // ghi đè bản cache cũ (xóa hash mật khẩu cũ còn lưu trên máy)
 
 let realtimeSub = null;
 
@@ -274,12 +257,39 @@ function setCloudStatus(text, ok){
  }
 }
 
+// ===== Ghi nhớ đăng nhập =====
+// Chỉ lưu PHIÊN đăng nhập (token, tự hết hạn/thu hồi được) – KHÔNG bao giờ lưu mật khẩu.
+// Có ghi nhớ  → localStorage (giữ sau khi tắt trình duyệt)
+// Không ghi nhớ → sessionStorage (đóng trình duyệt là mất)
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+const lsSet=(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}};
+function rememberOn(){return lsGet('sig_remember')!=='0'}
+const authStorage={
+ getItem:k=>{try{return (rememberOn()?localStorage:sessionStorage).getItem(k)}catch(e){return null}},
+ setItem:(k,v)=>{try{
+  if(rememberOn()){localStorage.setItem(k,v);sessionStorage.removeItem(k)}
+  else{sessionStorage.setItem(k,v);localStorage.removeItem(k)}
+ }catch(e){}},
+ removeItem:k=>{try{localStorage.removeItem(k);sessionStorage.removeItem(k)}catch(e){}}
+};
+function prefillLogin(){
+ const rm=rememberOn();
+ if($('#l_remember'))$('#l_remember').checked=rm;
+ const em=lsGet('sig_last_email');
+ if(rm&&em&&$('#l_u')&&!$('#l_u').value){$('#l_u').value=em;}
+ setTimeout(()=>{const f=$('#l_u')&&$('#l_u').value?$('#l_p'):$('#l_u');if(f&&$('#login_overlay').style.display!=='none')f.focus()},50);
+}
+function togglePwVisible(){const p=$('#l_p');p.type=p.type==='password'?'text':'password';$('#l_eye').textContent=p.type==='password'?'👁️':'🙈'}
+
 function initSupabase(){
  const url = SB_URL, key = SB_KEY;
  if(url && key && window.supabase){
   try {
-   if(!sbClient || sbClient.supabaseUrl !== url){
-    sbClient = window.supabase.createClient(url, key);
+   if(!sbClient){
+    sbClient = window.supabase.createClient(url, key, {auth:{persistSession:true,autoRefreshToken:true,storage:authStorage,storageKey:'sig_auth'}});
+    sbClient.auth.onAuthStateChange((ev, session)=>{
+     if(ev==='SIGNED_OUT' && currentUser && currentUser.role!=='viewer') showLogin();
+    });
     subscribeRealtime();
    }
    return true;
@@ -322,8 +332,11 @@ function subscribeRealtime(){
 function applyCloudData(val, updated_at){
  if(!val) return;
  lastCloudUpdate = updated_at;
+ // Giữ lại video file cục bộ (blob:) của phiên này nếu có
+ const locals = new Map((S.slides||[]).filter(s=>s.local).map(s=>[s.vurl+'|'+s.title,s.local]));
  mergeState(val);
- try { localStorage.setItem('sig', JSON.stringify(S)); }catch(e){}
+ S.slides.forEach(s=>{const l=locals.get(s.vurl+'|'+s.title);if(l)s.local=l});
+ saveLocal();
  updateUIFields();
  draw();
  refreshLoginMode();
@@ -350,7 +363,7 @@ async function loadFromCloud(force){
    applyCloudData(res.data.value, res.data.updated_at);
    return true;
   } else {
-   await saveToCloud();
+   if(can('settings')) await saveToCloud(); // chỉ admin được tạo dòng dữ liệu đầu tiên
    return true;
   }
  }catch(e){
@@ -364,7 +377,7 @@ async function loadFromCloud(force){
 
 // Kiểm tra siêu nhẹ: chỉ lấy updated_at (tốn vài chục byte, KHÔNG tải ảnh/value)
 async function checkLightweightUpdate(){
- if(isSavingCloud || !sbClient) return;
+ if(isSavingCloud || saveTimer || pendingSave || !sbClient) return;
  try {
   const res = await sbClient.from('sig_data').select('updated_at').eq('key', 'signage_state').maybeSingle();
   if(res.error) throw res.error;
@@ -380,32 +393,48 @@ async function checkLightweightUpdate(){
 }
 
 async function saveToCloud(){
- await sanitizeStateHashes();
- try{ localStorage.setItem('sig', JSON.stringify(S)); }catch(e){}
+ saveLocal();
  if(!initSupabase()){
   setCloudStatus('⚠️ Cloud: Chưa kết nối (Lưu Local)', false);
   return;
  }
- if(isSavingCloud) return;
+ if(!currentUser || currentUser.role==='viewer') return; // Tivi không bao giờ ghi
+ // Đang lưu dở thì đánh dấu để lưu lại ngay sau đó (không bỏ mất thay đổi cuối)
+ if(isSavingCloud){ pendingSave = true; return; }
  isSavingCloud = true;
  try {
   setCloudStatus('☁️ Đang lưu lên Cloud...', null);
   const nowStr = new Date().toISOString();
-  const { error } = await sbClient.from('sig_data').upsert({ key: 'signage_state', value: S, updated_at: nowStr });
-  if(error) throw error;
+  const row = { key: 'signage_state', value: publicState(), updated_at: nowStr };
+  let res = await sbClient.from('sig_data').update(row).eq('key','signage_state').select('key');
+  if(!res.error && (!res.data || !res.data.length) && can('settings')){
+   res = await sbClient.from('sig_data').insert(row).select('key'); // dòng chưa tồn tại
+  }
+  if(res.error) throw res.error;
+  if(!res.data || !res.data.length) throw new Error('Không có quyền ghi dữ liệu');
   lastCloudUpdate = nowStr;
   setCloudStatus('☁️ Cloud: Đã đồng bộ ✔', true);
  }catch(e){
   console.error("Lỗi lưu Cloud:", e);
-  setCloudStatus('⚠️ Lỗi lưu Cloud (Đã lưu Local)', false);
+  setCloudStatus('⚠️ Lỗi lưu Cloud', false);
+  pendingSave = false;
+  alert('Không lưu được lên Cloud: ' + (e.message || e) + '\nDữ liệu sẽ được tải lại từ Cloud.');
+  isSavingCloud = false;
+  await loadFromCloud(true); // hoàn tác thay đổi bị server từ chối
+  return;
  }finally{
   isSavingCloud = false;
  }
+ if(pendingSave){ pendingSave = false; saveToCloud(); }
 }
 
+// Gom các thay đổi liên tiếp (vd. gõ phím) thành 1 lần lưu
 function persist(){
- saveToCloud();
+ saveLocal();
+ clearTimeout(saveTimer);
+ saveTimer = setTimeout(()=>{ saveTimer = null; saveToCloud(); }, 800);
 }
+addEventListener('beforeunload', e=>{ if(saveTimer || isSavingCloud || pendingSave){ e.preventDefault(); e.returnValue=''; } });
 
 async function syncNow(){
  const ok = await loadFromCloud(true);
@@ -421,9 +450,11 @@ function updateUIFields(){
  if(typeof updateLogoUI === 'function') updateLogoUI();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
  updateUIFields();
- refreshLoginMode();
+ if(!window.supabase) setCloudStatus('⚠️ Không tải được thư viện Supabase', false);
+ prefillLogin();
+ if(!currentUser) await restoreSession();
  loadFromCloud();
 });
 
@@ -431,50 +462,62 @@ document.addEventListener('DOMContentLoaded', () => {
 setInterval(checkLightweightUpdate, 30000);
 function can(act){if(!currentUser)return false;return(PERMS[currentUser.role]||[]).includes(act)}
 
-function refreshLoginMode(){
- const setup = cloudChecked && !S.users.length;
- const sb=$('#setup_box'), lb=$('#login_box');
- if(sb) sb.style.display = setup ? '' : 'none';
- if(lb) lb.style.display = setup ? 'none' : '';
+function refreshLoginMode(){ /* Không còn màn "Thiết lập lần đầu": admin đầu tiên được tạo trong Supabase Dashboard */ }
+
+function showLogin(msg){
+ currentUser=null;
+ $('#login_overlay').style.display='flex';
+ $('#l_err').style.display=msg?'block':'none';
+ if(msg)$('#l_err').textContent=msg;
 }
 
-async function setupAdmin(){
- const err=$('#s_err'); err.style.display='none';
- const fail=m=>{err.textContent=m;err.style.display='block'};
- if(S.users.length) return refreshLoginMode();
- if(!cloudReady) return fail('Chưa kết nối được Cloud nên chưa thể tạo tài khoản. Kiểm tra mạng rồi tải lại trang.');
- const p1=$('#s_p1').value, p2=$('#s_p2').value;
- if(p1.length<8) return fail('Mật khẩu phải từ 8 ký tự trở lên!');
- if(p1!==p2) return fail('Hai mật khẩu không khớp!');
- const hash=await sha256(p1);
- if(LEGACY_DEFAULT_HASHES.includes(hash)) return fail('Mật khẩu này quá phổ biến, hãy chọn mật khẩu khác!');
- S.users=[{u:'admin',hash,role:'admin'}];
- persist();
- $('#s_p1').value='';$('#s_p2').value='';
- currentUser=S.users[0];
+// Lấy vai trò từ bảng profiles (server quyết định, client không tự sửa được)
+async function loadProfile(session){
+ if(!session||!session.user)return null;
+ const {data,error}=await sbClient.from('profiles').select('role,email').eq('id',session.user.id).maybeSingle();
+ if(error){console.warn(error);return null}
+ const role=data&&PERMS[data.role]?data.role:'none';
+ return {id:session.user.id,u:(data&&data.email)||session.user.email,role};
+}
+
+async function enterAs(user){
+ currentUser=user;
  $('#login_overlay').style.display='none';
  applyPermissions();
+ if(user.role==='none')alert('Tài khoản chưa được cấp quyền. Hãy nhờ Admin phân quyền cho bạn.');
+}
+
+// Tự đăng nhập lại nếu còn phiên hợp lệ
+async function restoreSession(){
+ if(!initSupabase())return;
+ const {data}=await sbClient.auth.getSession();
+ if(data&&data.session&&!currentUser){
+  const u=await loadProfile(data.session);
+  if(u)enterAs(u);
+ }
 }
 
 async function login(){
  $('#l_err').style.display='none';
- const u=$('#l_u').value.trim(), p=$('#l_p').value;
- if(!u || !p){
-  $('#l_err').textContent='Vui lòng nhập tên đăng nhập và mật khẩu!';
-  $('#l_err').style.display='block';
-  return;
+ const email=$('#l_u').value.trim(), p=$('#l_p').value;
+ if(!email||!p)return showLogin('Vui lòng nhập email và mật khẩu!');
+ // Lưu lựa chọn TRƯỚC khi đăng nhập để phiên được ghi đúng nơi
+ const rm=$('#l_remember').checked;
+ lsSet('sig_remember',rm?'1':'0');
+ lsSet('sig_last_email',rm?email:null);
+ if(!initSupabase())return showLogin('Chưa kết nối được Cloud. Kiểm tra mạng rồi thử lại.');
+ const btn=$('#l_btn');btn.disabled=true;btn.textContent='Đang đăng nhập...';
+ let data,error;
+ try{({data,error}=await sbClient.auth.signInWithPassword({email,password:p}))}
+ finally{btn.disabled=false;btn.textContent='Đăng nhập'}
+ $('#l_p').value='';$('#l_p').type='password';$('#l_eye').textContent='👁️';
+ if(error){
+  const m=/rate|too many/i.test(error.message)?'Thử sai quá nhiều lần, vui lòng đợi ít phút.':'Email hoặc mật khẩu không đúng!';
+  return showLogin(m);
  }
- await secReady;
- const h=await sha256(p);
- const found = u ? S.users.find(x=>x.u.toLowerCase()===u.toLowerCase() && (x.hash ? x.hash===h : x.p===p)) : null;
- if(found){
-  currentUser=found;
-  $('#login_overlay').style.display='none';
-  applyPermissions();
-  return;
- }
- $('#l_err').textContent='Tên đăng nhập hoặc mật khẩu không đúng!';
- $('#l_err').style.display='block';
+ const u=await loadProfile(data.session);
+ if(!u)return showLogin('Không đọc được hồ sơ người dùng. Admin đã chạy file SQL chưa?');
+ enterAs(u);
 }
 
 function loginTV(){
@@ -484,25 +527,28 @@ function loginTV(){
  play();
 }
 
-function logout(){
- currentUser=null;
- $('#login_overlay').style.display='flex';
- $('#l_err').style.display='none';
+async function logout(){
+ clearTimeout(saveTimer);
+ if(saveTimer||pendingSave){saveTimer=null;await saveToCloud()}
+ try{ if(sbClient) await sbClient.auth.signOut(); }catch(e){}
+ authStorage.removeItem('sig_auth');
  $('#l_u').value='';$('#l_p').value='';
- refreshLoginMode();
+ showLogin();
+ prefillLogin(); // vẫn điền sẵn email nếu đã chọn ghi nhớ
 }
 
 function applyPermissions(){
  if(!currentUser)return;
  $('#user_badge').textContent=`👤 ${currentUser.u} [${currentUser.role.toUpperCase()}]`;
  $('#btn_users').style.display=can('users')?'':'none';
+ $('#btn_change_pw').style.display=currentUser.id?'':'none';
  $('#settings_card').style.display=can('settings')?'':'none';
  $('#add_card').style.display=can('create')?'':'none';
  draw();
 }
 
 function openChangePassModal(){
- if(!currentUser)return;
+ if(!currentUser||!currentUser.id)return;
  $('#old_pw').value='';$('#new_pw').value='';$('#confirm_pw').value='';
  $('#change_pass_modal').showModal();
 }
@@ -510,86 +556,91 @@ function openChangePassModal(){
 async function changeMyPassword(){
  const oldP=$('#old_pw').value, newP=$('#new_pw').value, confP=$('#confirm_pw').value;
  if(!oldP||!newP)return alert('Vui lòng nhập đầy đủ thông tin!');
- const oldH=await sha256(oldP);
- if(currentUser.hash && oldH!==currentUser.hash)return alert('Mật khẩu hiện tại không chính xác!');
  if(newP!==confP)return alert('Xác nhận mật khẩu mới không khớp!');
  if(newP.length<8)return alert('Mật khẩu mới phải từ 8 ký tự trở lên!');
- 
- const newH=await sha256(newP);
- currentUser.hash=newH;
- delete currentUser.p;
- const idx=S.users.findIndex(x=>x.u===currentUser.u);
- if(idx!==-1){
-  S.users[idx].hash=newH;
-  delete S.users[idx].p;
-  persist();
- }
+ // Xác minh lại mật khẩu cũ trước khi cho đổi
+ const re=await sbClient.auth.signInWithPassword({email:currentUser.u,password:oldP});
+ if(re.error)return alert('Mật khẩu hiện tại không chính xác!');
+ const {error}=await sbClient.auth.updateUser({password:newP});
+ if(error)return alert('Không đổi được mật khẩu: '+error.message);
  $('#change_pass_modal').close();
- alert('Đổi mật khẩu thành công! Mật khẩu mới đã được mã hóa bảo mật SHA-256.');
+ alert('Đổi mật khẩu thành công!');
 }
 
-function openUserModal(){
+let profilesCache=[];
+async function openUserModal(){
  if(!can('users'))return alert('Chỉ có Admin mới có quyền quản lý người dùng!');
- renderUserList();
  $('#master_pin_in').value='';
  $('#pin_enable_chk').checked=!!S.pinLockEnabled;
  $('#user_modal').showModal();
+ await renderUserList();
 }
 
-function togglePinLock(v){
- if(v && !S.pinHash){
-  $('#pin_enable_chk').checked=false;
-  return alert('Hãy đặt Mã PIN trước rồi mới bật khóa!');
+async function togglePinLock(v){
+ if(v){
+  const {data}=await sbClient.rpc('has_pin');
+  if(!data){$('#pin_enable_chk').checked=false;return alert('Hãy đặt Mã PIN trước rồi mới bật khóa!')}
  }
  S.pinLockEnabled=!!v;
  persist();
 }
 
-function renderUserList(){
- $('#user_list_box').innerHTML=S.users.map((u,i)=>`
-  <div class="it" style="justify-content:space-between">
-   <div><b>${esc(u.u)}</b> <span class="tag">${esc(String(u.role).toUpperCase())}</span></div>
-   ${u.u.toLowerCase()==='admin'?'<span class="tag" style="background:var(--ac);color:#fff;font-weight:bold">BẤT BIẾN</span>':`<button class="sm" style="color:#ff4d4f" onclick="deleteUser(${i})">Xóa</button>`}
-  </div>
- `).join('');
+const ROLE_OPTS=[['admin','👑 Admin'],['editor','✏️ Editor'],['creator','➕ Creator'],['none','⛔ Chưa cấp quyền']];
+async function renderUserList(){
+ const box=$('#user_list_box');
+ box.innerHTML='<span class="hint">Đang tải...</span>';
+ const {data,error}=await sbClient.from('profiles').select('id,email,role').order('created_at');
+ if(error){box.innerHTML='<span class="hint">Không tải được danh sách: '+esc(error.message)+'</span>';return}
+ profilesCache=data||[];
+ box.innerHTML=profilesCache.map((p,i)=>{
+  const me=p.id===currentUser.id;
+  const sel=`<select style="width:auto" ${me?'disabled':''} onchange="setRole(${i},this.value)">${ROLE_OPTS.map(([v,l])=>`<option value="${v}" ${p.role===v?'selected':''}>${l}</option>`).join('')}</select>`;
+  return `<div class="it" style="justify-content:space-between"><div class="t"><b>${esc(p.email)}</b>${me?' <span class="tag">BẠN</span>':''}</div>${sel}${me?'':`<button class="sm" style="color:#ff4d4f" onclick="deleteUser(${i})">Gỡ</button>`}</div>`;
+ }).join('')||'<span class="hint">Chưa có user</span>';
+}
+
+async function setRole(i,role){
+ const p=profilesCache[i];if(!p)return;
+ const {data,error}=await sbClient.from('profiles').update({role}).eq('id',p.id).select('id');
+ if(error||!data||!data.length)alert('Không đổi được quyền'+(error?': '+error.message:''));
+ renderUserList();
 }
 
 async function addUser(){
- const u=$('#new_u_name').value.trim(), p=$('#new_u_pass').value, r=$('#new_u_role').value;
- if(!u||!p)return alert('Vui lòng nhập tên đăng nhập và mật khẩu!');
+ const email=$('#new_u_name').value.trim(), p=$('#new_u_pass').value, r=$('#new_u_role').value;
+ if(!email||!p)return alert('Vui lòng nhập email và mật khẩu!');
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return alert('Email không hợp lệ!');
  if(p.length<8)return alert('Mật khẩu phải từ 8 ký tự trở lên!');
- if(u.toLowerCase()==='admin')return alert('Tên đăng nhập "admin" là tài khoản hệ thống bất biến!');
- if(S.users.some(x=>x.u.toLowerCase()===u.toLowerCase()))return alert('Tên đăng nhập này đã tồn tại!');
- const hash=await sha256(p);
- S.users.push({u,hash,role:r});
- persist();
+ // Dùng client tạm (không lưu phiên) để admin không bị đăng xuất
+ const tmp=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:false,autoRefreshToken:false,storageKey:'sig_tmp_signup'}});
+ const {data,error}=await tmp.auth.signUp({email,password:p});
+ if(error)return alert('Không tạo được user: '+error.message);
+ const uid=data.user&&data.user.id;
+ if(!uid)return alert('Không tạo được user (email có thể đã tồn tại).');
+ const up=await sbClient.from('profiles').update({role:r}).eq('id',uid).select('id');
+ if(up.error||!up.data||!up.data.length)alert('Đã tạo user nhưng chưa gán được quyền. Hãy chọn quyền trong danh sách.');
+ if(!data.session)alert('Đã tạo user. Lưu ý: Supabase đang bật "Confirm email" nên user phải xác nhận email trước khi đăng nhập (hoặc tắt tùy chọn này trong Authentication → Sign In / Providers → Email).');
  $('#new_u_name').value='';$('#new_u_pass').value='';
  renderUserList();
 }
 
-function deleteUser(i){
- const target=S.users[i];
- if(!target)return;
- if(target.u.toLowerCase()==='admin'){
-  return alert('Tài khoản "admin" là hệ thống bất biến, không thể xóa!');
- }
- if(confirm(`Bạn có chắc muốn xóa user "${target.u}"?`)){
-  S.users.splice(i,1);
-  persist();
-  renderUserList();
- }
+async function deleteUser(i){
+ const p=profilesCache[i];if(!p)return;
+ if(!confirm(`Gỡ toàn bộ quyền của "${p.email}"?\n(Muốn xóa hẳn tài khoản: Supabase Dashboard → Authentication → Users)`))return;
+ const {data,error}=await sbClient.from('profiles').update({role:'none'}).eq('id',p.id).select('id');
+ if(error||!data||!data.length)alert('Không gỡ được quyền'+(error?': '+error.message:''));
+ renderUserList();
 }
 
 async function changePin(){
  const pin=$('#master_pin_in').value.trim();
  if(!pin)return alert('Vui lòng nhập mã PIN mới');
- if(pin.length<4)return alert('Mã PIN phải từ 4 ký tự trở lên!');
- if(['1234','0000','1111','123456','000000','111111'].includes(pin))return alert('Mã PIN này quá dễ đoán, hãy chọn mã khác!');
- S.pinHash=await sha256(pin);
- delete S.pin;
- persist();
+ if(pin.length<6)return alert('Mã PIN phải từ 6 ký tự trở lên!');
+ if(/^(\d)\1+$/.test(pin)||'0123456789'.includes(pin)||'9876543210'.includes(pin))return alert('Mã PIN này quá dễ đoán, hãy chọn mã khác!');
+ const {error}=await sbClient.rpc('set_pin',{p:pin});
+ if(error)return alert('Không lưu được PIN: '+error.message);
  $('#master_pin_in').value='';
- alert('Đã mã hóa SHA-256 và lưu Mã PIN Master Quản trị!');
+ alert('Đã lưu Mã PIN (mã hóa bcrypt trên server)!');
 }
 
 $('#kind').innerHTML=Object.entries(KINDS).map(([k,v])=>`<option value="${k}">${v[0]} ${v[1]}</option>`).join('');
@@ -646,17 +697,18 @@ function draw(){
  $('#empty').style.display=S.slides.length?'none':'';
  $('#list').innerHTML=S.slides.map((s,i)=>{
   const editBtn=can('edit')?`<button class="sm" onclick="ed(${i})">Sửa</button>`:'';
-  const delBtn=can('delete')?`<button class="sm" onclick="if(confirm('Xóa?')){S.slides.splice(${i},1);persist();draw()}">Xóa</button>`:'';
+  const delBtn=can('delete')?`<button class="sm" onclick="delSlide(${i})">Xóa</button>`:'';
   const chkDis=can('edit')?'':'disabled';
-  return `<div class="it ${s.on?'':'off'}"><input type="checkbox" style="width:auto" ${s.on?'checked':''} ${chkDis} onchange="S.slides[${i}].on=this.checked;persist();draw()"><span class="tag">${esc(LBL[s.type]||s.type)}</span><span class="t">${esc(s.title||s.vurl||LBL[s.type])}</span><button class="sm" onclick="mv(${i},-1)">↑</button><button class="sm" onclick="mv(${i},1)">↓</button>${editBtn}${delBtn}</div>`;
+  return `<div class="it ${s.on?'':'off'}"><input type="checkbox" style="width:auto" ${s.on?'checked':''} ${chkDis} onchange="if(can('edit')){S.slides[${i}].on=this.checked;persist()}draw()"><span class="tag">${esc(LBL[s.type]||s.type)}</span><span class="t">${esc(s.title||s.vurl||LBL[s.type])}</span><button class="sm" onclick="mv(${i},-1)">↑</button><button class="sm" onclick="mv(${i},1)">↓</button>${editBtn}${delBtn}</div>`;
  }).join('');
 }
 draw();
-function exp(){if(!can('export'))return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download='signage.json';a.click()}
-$('#imp').onchange=e=>{if(!can('export'))return;const r=new FileReader();r.onload=()=>{try{mergeState(JSON.parse(r.result));persist();location.reload()}catch(x){alert('File không hợp lệ')}};r.readAsText(e.target.files[0])};
+function delSlide(i){if(!can('delete'))return;if(confirm('Xóa?')){S.slides.splice(i,1);persist();draw()}}
+function exp(){if(!can('export'))return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(publicState())],{type:'application/json'}));a.download='signage.json';a.click()}
+$('#imp').onchange=e=>{if(!can('settings'))return;const r=new FileReader();r.onload=async()=>{try{mergeState(JSON.parse(r.result));clearTimeout(saveTimer);saveTimer=null;await saveToCloud();location.reload()}catch(x){alert('File không hợp lệ')}};r.readAsText(e.target.files[0])};
 
 /* PLAYER */
-let L=[],cur=0,tm,cdInt=null;
+let L=[],cur=0,tm,cdInt=null,clkInt=null;
 const today=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
 function active(){const n=new Date(),hm=n.toTimeString().slice(0,5);return S.slides.filter(s=>s.on&&(!s.from||s.from<=today())&&(!s.to||s.to>=today())&&(!s.days||s.days.includes(n.getDay()))&&(!s.t1||s.t1<=hm)&&(!s.t2||s.t2>=hm))}
 const yt=u=>{const m=String(u||'').match(/(?:youtu\.be\/|v=|embed\/|shorts\/|live\/)([\w-]{11})/);return m&&m[1]};
@@ -727,11 +779,11 @@ function renderSide(){const ms=active().filter(s=>s.type=='meeting').flatMap(s=>
 $('#side').innerHTML='<div class="c" id="sc"></div><div class="d" id="sd"></div>'+(ms.length?'<h4>📅 Lịch họp hôm nay</h4>'+ms.map(l=>{const p=l.split('|').map(x=>x.trim());return`<div class="m"><b>${esc(p[0])}</b>${esc(p[1])}<i>${esc(p[2])}</i></div>`}).join(''):'')+(S.sidenote?`<div class="n">${esc(S.sidenote)}</div>`:'');tick()}
 function tick(){const n=new Date(),a=$('#sc');if(a){a.textContent=n.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});$('#sd').textContent=n.toLocaleDateString('vi-VN',{weekday:'long',day:'numeric',month:'long'})}}
 function clk(){tick();$('#clock').textContent=new Date().toLocaleString('vi-VN',{weekday:'long',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
-function play(){cur=0;$('#co').textContent=S.company;if(safeImg(S.logo)){$('#player-logo').src=S.logo;$('#player-logo').hidden=false}else{$('#player-logo').hidden=true}$('#tk span').textContent=S.ticker||'';$('#player').hidden=false;clk();setInterval(clk,20000);
+function play(){cur=0;$('#co').textContent=S.company;if(safeImg(S.logo)){$('#player-logo').src=S.logo;$('#player-logo').hidden=false}else{$('#player-logo').hidden=true}$('#tk span').textContent=S.ticker||'';$('#player').hidden=false;clk();clearInterval(clkInt);clkInt=setInterval(clk,20000);
  (document.documentElement.requestFullscreen||(()=>{})).call(document.documentElement).catch?.(()=>{});show()}
 
 function stop(){
- if(S.pinLockEnabled && S.pinHash && currentUser && currentUser.role==='viewer'){
+ if(S.pinLockEnabled && currentUser && currentUser.role==='viewer'){
   $('#pin_modal').showModal();
   return;
  }
@@ -741,8 +793,14 @@ function stop(){
 async function confirmUnlock(){
  const pin=$('#unlock_pin').value.trim();
  if(!pin) return alert('Vui lòng nhập mã PIN!');
- const pinH=await sha256(pin);
- if(S.pinHash && pinH===S.pinHash){
+ let ok=false;
+ try{
+  if(!initSupabase())return alert('Chưa kết nối được Cloud để kiểm tra PIN.');
+  const {data,error}=await sbClient.rpc('verify_pin',{p:pin});
+  if(error)return alert(error.message);
+  ok=data===true;
+ }catch(e){return alert('Lỗi kiểm tra PIN')}
+ if(ok){
   $('#pin_modal').close();
   $('#unlock_pin').value='';
   clearTimeout(tm);if(cdInt){clearInterval(cdInt);cdInt=null}$('#player').hidden=true;$('#stage').innerHTML='';if(document.fullscreenElement)document.exitFullscreen();
