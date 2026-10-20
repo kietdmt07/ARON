@@ -1094,6 +1094,7 @@ function html(s,tok){const im0=safeImg(s.img),im=im0?cachedURL(im0):'',bg=im?`st
  if(s.type=='text')return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#0f2027,#2c5364)"'}><div class="emo">📢</div><div class="big">${esc(s.title)}</div><div class="mid" style="white-space:pre-line">${esc(s.extra)}</div></div>`;
  if(s.type=='clock'){const d=new Date();return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#141e30,#243b55)"'}><div class="big" style="font-size:14vw">${d.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}</div><div class="mid">${d.toLocaleDateString('vi-VN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>`}
  if(s.type=='countdown'){return`<div class="sl ${ov}" ${bg||'style="background:linear-gradient(135deg,#7f00ff,#e100ff)"'}><div class="emo">⏳</div><div class="mid" style="font-size:3.5vw;font-weight:700">${esc(s.title)}</div><div id="cd_live_box" style="width:100%"></div><div class="mid" style="font-size:2.2vw">${esc(s.sub)}</div></div>`}
+ if(s.type!=='video')return'<div class="sl"><div class="mid">⚠️ Loại nội dung này chưa được hỗ trợ</div><div class="sm2">Hãy tải lại trang để cập nhật ứng dụng</div></div>';
  const mutedAttr=s.sound?'':'muted';return`<div class="sl ${ov}" ${bg||'style="background:#000"'}><video id="v" autoplay ${mutedAttr} playsinline src="${esc(safeMedia(s.local||cachedURL(s.vurl)))}"></video></div>`}
 
 function startLiveCountdown(targetStr){
@@ -1148,7 +1149,7 @@ $('#side').innerHTML='<div class="c" id="sc"></div><div class="d" id="sd"></div>
 function tick(){const n=new Date(),a=$('#sc');if(a){a.textContent=n.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});$('#sd').textContent=n.toLocaleDateString('vi-VN',{weekday:'long',day:'numeric',month:'long'})}}
 function clk(){tick();$('#clock').textContent=new Date().toLocaleString('vi-VN',{weekday:'long',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
 function play(previewSlide){
- previewOnly=previewSlide||null;cur=0;
+ previewOnly=(previewSlide&&typeof previewSlide==='object'&&typeof previewSlide.type==='string'&&!(previewSlide instanceof Event))?previewSlide:null;cur=0;
  $('#preview_tag').hidden=!previewOnly;
  $('#co').textContent=S.company;if(safeImg(S.logo)){$('#player-logo').src=S.logo;$('#player-logo').hidden=false}else{$('#player-logo').hidden=true}$('#tk span').textContent=S.ticker||'';$('#player').hidden=false;clk();clearInterval(clkInt);clkInt=setInterval(clk,20000);
  if(!previewOnly){(document.documentElement.requestFullscreen||(()=>{})).call(document.documentElement).catch?.(()=>{});precacheMedia()}
@@ -1220,7 +1221,7 @@ const urlParams=new URLSearchParams(window.location.search);
 if(urlParams.get('mode')==='player'||urlParams.get('tv')==='1'){
  currentUser={u:'tivi_tv',role:'viewer'};
  $('#login_overlay').style.display='none';
- document.addEventListener('DOMContentLoaded',play);
+ document.addEventListener('DOMContentLoaded',()=>play());
 }else{
  $('#login_overlay').style.display='flex';
 }
