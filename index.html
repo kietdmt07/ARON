@@ -57,6 +57,7 @@ dialog::backdrop{background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)}
 </style></head><body>
 <div class="wrap" id="main_wrap">
  <div class="row"><h1>📺 Màn hình truyền thông nội bộ</h1><span style="flex:1"></span>
+  <span id="cloud_badge" class="tag" style="font-size:12px;cursor:pointer" onclick="syncNow()" title="Bấm để đồng bộ ngay">☁️ Đang kiểm tra Cloud...</span>
   <span id="user_badge" class="tag" style="font-size:13px;font-weight:bold;padding:4px 10px;background:var(--ac);color:#fff"></span>
   <button class="p" onclick="play()">▶ Phát toàn màn hình</button>
   <button id="btn_users" onclick="openUserModal()">👥 User &amp; Phân quyền</button>
@@ -202,8 +203,8 @@ const PERMS={
  creator:['create','play'],
  viewer:['play']
 };
-const DEFAULT_SB_URL = "https://zffyyelruwybpvxevjzw.supabase.co";
-const DEFAULT_SB_KEY = "sb_publishable_MekYFVYuVVZUszEcZq-KCg_oxdvzAft";
+const DEFAULT_SB_URL = "https://celqybfrjzrxvhlhtrqo.supabase.co";
+const DEFAULT_SB_KEY = "sb_publishable_oxu9CsROYb_POoS7z7bwkw_hgejeEBC";
 let sbClient=null, lastCloudUpdate=null, isSavingCloud=false;
 
 let S={company:'',ticker:'',logo:'',slides:[],users:DEFAULT_USERS,pinHash:DEFAULT_PIN_HASH,pinLockEnabled:false,sbUrl:DEFAULT_SB_URL,sbKey:DEFAULT_SB_KEY},edit=null,imgData='',vfileURL='',currentUser=null;
@@ -213,8 +214,8 @@ try{
  if(!S.users||!S.users.length)S.users=DEFAULT_USERS;
  if(!S.pinHash)S.pinHash=DEFAULT_PIN_HASH;
  delete S.pin;
- if(!S.sbUrl || S.sbUrl.includes('mqyfdhpemocwzuujwpkx'))S.sbUrl=DEFAULT_SB_URL;
- if(!S.sbKey || S.sbKey.includes('HLs1Db6BSmXTwvlNt7FqrQ'))S.sbKey=DEFAULT_SB_KEY;
+ if(!S.sbUrl || S.sbUrl.includes('mqyfdhpemocwzuujwpkx') || S.sbUrl.includes('zffyyelruwybpvxevjzw'))S.sbUrl=DEFAULT_SB_URL;
+ if(!S.sbKey || S.sbKey.includes('HLs1Db6BSmXTwvlNt7FqrQ') || S.sbKey.includes('MekYFVYuVVZUszEcZq'))S.sbKey=DEFAULT_SB_KEY;
 }catch(e){}
 
 async function sha256(str){
@@ -244,12 +245,29 @@ async function initSecurity(){
 }
 initSecurity();
 
+let realtimeSub = null;
+
+function setCloudStatus(text, ok){
+ const b = $('#cloud_badge');
+ if(b){
+  b.textContent = text;
+  b.style.background = ok === true ? '#2e7d32' : (ok === false ? '#c62828' : 'var(--bg)');
+  b.style.color = (ok === true || ok === false) ? '#fff' : 'var(--mu)';
+  b.style.borderColor = ok === true ? '#2e7d32' : (ok === false ? '#c62828' : 'var(--bd)');
+ }
+ const s = $('#sb_status');
+ if(s) s.textContent = text;
+}
+
 function initSupabase(){
  const url = (S.sbUrl || DEFAULT_SB_URL).trim();
  const key = (S.sbKey || DEFAULT_SB_KEY).trim();
  if(url && key && window.supabase){
   try {
-   sbClient = window.supabase.createClient(url, key);
+   if(!sbClient || sbClient.supabaseUrl !== url){
+    sbClient = window.supabase.createClient(url, key);
+    subscribeRealtime();
+   }
    return true;
   }catch(e){
    console.error("Lỗi khởi tạo Supabase:", e);
@@ -259,43 +277,105 @@ function initSupabase(){
  return false;
 }
 
-async function loadFromCloud(){
+function subscribeRealtime(){
+ if(!sbClient) return;
+ try {
+  if(realtimeSub) {
+   sbClient.removeChannel(realtimeSub);
+   realtimeSub = null;
+  }
+  realtimeSub = sbClient
+   .channel('sig_data_changes')
+   .on('postgres_changes', { event: '*', schema: 'public', table: 'sig_data', filter: 'key=eq.signage_state' }, payload => {
+    if(payload.new && payload.new.updated_at && payload.new.updated_at !== lastCloudUpdate){
+     if(payload.new.value){
+      applyCloudData(payload.new.value, payload.new.updated_at);
+     }else{
+      loadFromCloud(true);
+     }
+    }
+   })
+   .subscribe(status => {
+    if(status === 'SUBSCRIBED'){
+     setCloudStatus('☁️ Cloud: Đồng bộ trực tiếp ✔', true);
+    }
+   });
+ }catch(e){
+  console.warn("Không bật được Supabase Realtime:", e);
+ }
+}
+
+function applyCloudData(val, updated_at){
+ if(!val) return;
+ lastCloudUpdate = updated_at;
+ S = Object.assign(S, val);
+ if(!S.users || !S.users.length) S.users = DEFAULT_USERS;
+ try { localStorage.setItem('sig', JSON.stringify(S)); }catch(e){}
+ updateUIFields();
+ draw();
+ if(!$('#player').hidden){
+  if(S.logo){$('#player-logo').src=S.logo;$('#player-logo').hidden=false}else{$('#player-logo').hidden=true}
+  $('#co').textContent=S.company||'';
+  $('#tk span').textContent=S.ticker||'';
+ }
+ setCloudStatus('☁️ Cloud: Đã kết nối ✔', true);
+}
+
+async function loadFromCloud(force){
  if(!initSupabase()) {
-  if($('#sb_status')) $('#sb_status').textContent = 'Chưa cấu hình Cloud';
+  setCloudStatus('⚠️ Cloud: Chưa cấu hình', null);
   return false;
  }
  try {
-  if($('#sb_status')) $('#sb_status').textContent = 'Đang tải từ Cloud...';
+  setCloudStatus('☁️ Đang kiểm tra Cloud...', null);
   let res = await sbClient.from('sig_data').select('value, updated_at').eq('key', 'signage_state').maybeSingle();
   if(res.error || !res.data){
    res = await sbClient.from('bc_data').select('value, updated_at').eq('key', 'signage_state').maybeSingle();
   }
   if(res.data && res.data.value){
-   lastCloudUpdate = res.data.updated_at;
-   S = Object.assign(S, res.data.value);
-   if(!S.users||!S.users.length)S.users=DEFAULT_USERS;
-   try{ localStorage.setItem('sig', JSON.stringify(S)); }catch(e){}
-   updateUIFields();
-   draw();
-   if($('#sb_status')) $('#sb_status').textContent = 'Đã kết nối Cloud ✔';
+   applyCloudData(res.data.value, res.data.updated_at);
    return true;
   } else {
    await saveToCloud();
+   return true;
   }
  }catch(e){
   console.warn("Chưa đọc được dữ liệu Cloud:", e);
-  if($('#sb_status')) $('#sb_status').textContent = 'Dùng Local (Không thể nối Cloud)';
+  setCloudStatus('⚠️ Cloud: Mất kết nối (Dùng Local)', false);
  }
  return false;
+}
+
+// Kiểm tra siêu nhẹ: chỉ lấy updated_at (tốn vài chục byte, KHÔNG tải ảnh/value)
+async function checkLightweightUpdate(){
+ if(isSavingCloud || !sbClient) return;
+ try {
+  let res = await sbClient.from('sig_data').select('updated_at').eq('key', 'signage_state').maybeSingle();
+  if(res.error || !res.data){
+   res = await sbClient.from('bc_data').select('updated_at').eq('key', 'signage_state').maybeSingle();
+  }
+  if(res.data && res.data.updated_at){
+   setCloudStatus('☁️ Cloud: Đã kết nối ✔', true);
+   if(res.data.updated_at !== lastCloudUpdate){
+    await loadFromCloud(true);
+   }
+  }
+ }catch(e){
+  setCloudStatus('⚠️ Cloud: Mất kết nối (Dùng Local)', false);
+ }
 }
 
 async function saveToCloud(){
  await sanitizeStateHashes();
  try{ localStorage.setItem('sig', JSON.stringify(S)); }catch(e){}
- if(isSavingCloud || !initSupabase()) return;
+ if(!initSupabase()){
+  setCloudStatus('⚠️ Cloud: Chưa kết nối (Lưu Local)', false);
+  return;
+ }
+ if(isSavingCloud) return;
  isSavingCloud = true;
  try {
-  if($('#sb_status')) $('#sb_status').textContent = 'Đang lưu Cloud...';
+  setCloudStatus('☁️ Đang lưu lên Cloud...', null);
   const nowStr = new Date().toISOString();
   let { error } = await sbClient.from('sig_data').upsert({ key: 'signage_state', value: S, updated_at: nowStr });
   if(error){
@@ -303,10 +383,10 @@ async function saveToCloud(){
    if(res2.error) throw res2.error;
   }
   lastCloudUpdate = nowStr;
-  if($('#sb_status')) $('#sb_status').textContent = 'Đã đồng bộ Cloud ✔';
+  setCloudStatus('☁️ Cloud: Đã đồng bộ ✔', true);
  }catch(e){
   console.error("Lỗi lưu Cloud:", e);
-  if($('#sb_status')) $('#sb_status').textContent = 'Lỗi lưu Cloud (Đã lưu Local)';
+  setCloudStatus('⚠️ Lỗi lưu Cloud (Đã lưu Local)', false);
  }finally{
   isSavingCloud = false;
  }
@@ -321,14 +401,18 @@ async function saveSupabaseConfig(){
  const key = $('#sb_key_in').value.trim();
  S.sbUrl = url;
  S.sbKey = key;
+ if(sbClient){
+  try{ sbClient.removeAllChannels(); }catch(e){}
+  sbClient = null;
+ }
  saveToCloud();
  alert('Đã lưu cấu hình Supabase Cloud & kích hoạt đồng bộ!');
 }
 
 async function syncNow(){
- const ok = await loadFromCloud();
+ const ok = await loadFromCloud(true);
  if(ok) alert('Đồng bộ dữ liệu mới nhất từ Supabase Cloud thành công!');
- else alert('Đã kiểm tra. Không có bản cập nhật mới hoặc không thể kết nối Cloud.');
+ else alert('Không thể kết nối đến Supabase Cloud. Vui lòng kiểm tra lại trạng thái project trên Supabase (kiểm tra có bị paused không) hoặc kết nối mạng.');
 }
 
 function updateUIFields(){
@@ -346,28 +430,8 @@ document.addEventListener('DOMContentLoaded', () => {
  loadFromCloud();
 });
 
-setInterval(async () => {
- if(isSavingCloud || !sbClient) return;
- try {
-  let res = await sbClient.from('sig_data').select('value, updated_at').eq('key', 'signage_state').maybeSingle();
-  if(res.error || !res.data){
-   res = await sbClient.from('bc_data').select('value, updated_at').eq('key', 'signage_state').maybeSingle();
-  }
-  if(res.data && res.data.updated_at && res.data.updated_at !== lastCloudUpdate){
-   lastCloudUpdate = res.data.updated_at;
-   S = Object.assign(S, res.data.value);
-   if(!S.users||!S.users.length)S.users=DEFAULT_USERS;
-   try{ localStorage.setItem('sig', JSON.stringify(S)); }catch(e){}
-   updateUIFields();
-   draw();
-   if(!$('#player').hidden){
-    if(S.logo){$('#player-logo').src=S.logo;$('#player-logo').hidden=false}else{$('#player-logo').hidden=true}
-    $('#co').textContent=S.company||'';
-    $('#tk span').textContent=S.ticker||'';
-   }
-  }
- }catch(e){}
-}, 6000);
+// Polling dự phòng siêu nhẹ: chỉ kiểm tra trường updated_at mỗi 30s (tốn ~50 byte thay vì 5MB)
+setInterval(checkLightweightUpdate, 30000);
 function can(act){if(!currentUser)return false;return(PERMS[currentUser.role]||[]).includes(act)}
 
 async function login(){
