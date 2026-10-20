@@ -252,7 +252,7 @@ const PERMS={
 const SB_URL="https://celqybfrjzrxvhlhtrqo.supabase.co";
 const SB_KEY="sb_publishable_oxu9CsROYb_POoS7z7bwkw_hgejeEBC";
 // Chỉ nhận/lưu các trường này. KHÔNG còn users / pinHash trong dữ liệu chung.
-const STATE_KEYS=['company','ticker','logo','slides','pinLockEnabled','lay','sidenote'];
+const STATE_KEYS=['company','ticker','logo','slides','pinLockEnabled','lay','sidenote','emergency'];
 let sbClient=null, lastCloudUpdate=null, isSavingCloud=false, pendingSave=false, saveTimer=null, cloudChecked=false, cloudReady=false;
 
 let S={company:'',ticker:'',logo:'',slides:[],pinLockEnabled:false},edit=null,imgData='',vfileURL='',currentUser=null;
@@ -277,6 +277,8 @@ function normalizeState(){
  S.slides=S.slides.filter(s=>s&&typeof s==='object'&&typeof s.type==='string');
  S.slides.forEach(s=>{if(s.days!=null&&!Array.isArray(s.days))s.days=null});
  if(S.logo&&!safeImg(S.logo))delete S.logo;
+ if(S.emergency!=null&&(typeof S.emergency!=='object'||Array.isArray(S.emergency)))S.emergency={on:false};
+ if(S.emergency&&S.emergency.on){const e=S.emergency;S.emergency={on:true,title:String(e.title||''),msg:String(e.msg||''),level:['red','orange','blue'].includes(e.level)?e.level:'red',at:typeof e.at==='string'?e.at:new Date().toISOString(),until:typeof e.until==='string'?e.until:null,by:String(e.by||'')}}
 }
 // Bản sạch để lưu (bỏ blob: video cục bộ vì chỉ có giá trị trên máy này)
 function publicState(){
