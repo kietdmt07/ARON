@@ -124,6 +124,8 @@ dialog::backdrop{background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)}
 .emg-ic{font-size:10vw;line-height:1}.emg-t{font-size:6vw;font-weight:900;text-transform:uppercase;line-height:1.1;margin-top:1vw}.emg-m{font-size:3.2vw;margin-top:2vw;white-space:pre-line;max-width:85vw}.emg-time{font-size:1.8vw;opacity:.8;margin-top:2vw}
 #preview_tag{position:absolute;top:1.5vw;left:1.5vw;z-index:16;background:rgba(0,0,0,.6);color:#fff;padding:.5vw 1.2vw;border-radius:2vw;font-size:1.4vw}
 #preview_tag[hidden]{display:none}
+#snd_hint{position:absolute;left:1.5vw;bottom:calc(5.5vh + 1.5vw);z-index:17;background:rgba(10,9,48,.75);color:#fff;padding:.6vw 1.2vw;border-radius:2vw;font-size:1.3vw;border:1px solid rgba(255,255,255,.25);cursor:pointer}
+#snd_hint[hidden]{display:none}#snd_hint.urgent{background:#fff;color:#b00020;font-weight:800;font-size:2vw;animation:emgp 1s infinite alternate}
 /* Lịch, thời tiết, KPI */
 .mr.now{background:rgba(255,209,102,.25);outline:2px solid var(--hl)}.mr.past{opacity:.45}.live{color:var(--hl);font-style:normal;font-size:.8em;margin-left:.6vw}
 .upd{font-size:1.3vw;opacity:.6;margin-top:1.5vw;text-align:center}
@@ -291,10 +293,13 @@ dialog::backdrop{background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)}
  <label>Nội dung</label><textarea id="em_msg" rows="3" placeholder="VD: Vui lòng di chuyển theo lối thoát hiểm gần nhất"></textarea>
  <div class="grid" style="gap:10px"><div><label>Mức độ</label><select id="em_lv"><option value="red">🔴 Khẩn cấp (đỏ, nhấp nháy)</option><option value="orange">🟠 Cảnh báo (cam)</option><option value="blue">🔵 Thông báo quan trọng (xanh)</option></select></div>
  <div><label>Tự tắt sau (phút, 0 = tắt tay)</label><input id="em_min" type="number" min="0" value="0"></div></div>
+ <div class="grid" style="gap:10px"><div><label>Âm thanh cảnh báo</label><select id="em_snd"><option value="10">🔊 Lặp lại mỗi 10 giây</option><option value="30">🔊 Lặp lại mỗi 30 giây</option><option value="once">🔊 Chỉ phát 1 lần</option><option value="off">🔇 Không phát âm thanh</option></select></div>
+ <div><label>Âm lượng</label><div class="row" style="flex-wrap:nowrap"><select id="em_vol" style="flex:1"><option value="0.1">Nhỏ</option><option value="0.18" selected>Vừa</option><option value="0.3">Lớn</option></select><button type="button" onclick="testAlert()" title="Nghe thử">▶ Nghe thử</button></div></div></div>
+ <p class="hint" style="margin:6px 0 0">Mỗi mức độ có tiếng riêng để dễ nhận biết (🔴 còi hú mạnh, 🟠 chuông 3 nốt, 🔵 ding-dong). Âm thanh lặp tự dừng sau 10 phút (màn hình vẫn hiện thông báo).</p>
  <button class="p" style="margin-top:14px;width:100%;background:#b00020;border-color:#b00020;font-weight:700" onclick="sendEmergency()">🚨 PHÁT NGAY</button>
 </dialog>
 
-<div id="player" hidden><img id="player-logo" hidden><div id="emg" hidden></div><div id="preview_tag" hidden>👁 XEM TRƯỚC · bấm Esc để thoát</div><div id="pg"></div><div id="body"><div id="stage"></div><div id="side"></div></div>
+<div id="player" hidden><img id="player-logo" hidden><div id="emg" hidden></div><div id="snd_hint" hidden>🔇 Chạm hoặc bấm vào màn hình 1 lần để bật âm thanh cảnh báo</div><div id="preview_tag" hidden>👁 XEM TRƯỚC · bấm Esc để thoát</div><div id="pg"></div><div id="body"><div id="stage"></div><div id="side"></div></div>
  <div id="bar"><span id="co"></span><span id="tk"><span></span></span><span id="clock"></span></div></div>
 
 <script>
@@ -339,7 +344,7 @@ function normalizeState(){
  S.slides.forEach(s=>{if(s.days!=null&&!Array.isArray(s.days))s.days=null});
  if(S.logo&&!safeImg(S.logo))delete S.logo;
  if(S.emergency!=null&&(typeof S.emergency!=='object'||Array.isArray(S.emergency)))S.emergency={on:false};
- if(S.emergency&&S.emergency.on){const e=S.emergency;S.emergency={on:true,title:String(e.title||''),msg:String(e.msg||''),level:['red','orange','blue'].includes(e.level)?e.level:'red',at:typeof e.at==='string'?e.at:new Date().toISOString(),until:typeof e.until==='string'?e.until:null,by:String(e.by||'')}}
+ if(S.emergency&&S.emergency.on){const e=S.emergency;S.emergency={on:true,title:String(e.title||''),msg:String(e.msg||''),level:['red','orange','blue'].includes(e.level)?e.level:'red',at:typeof e.at==='string'?e.at:new Date().toISOString(),until:typeof e.until==='string'?e.until:null,by:String(e.by||''),sound:['off','once','10','30'].includes(String(e.sound))?String(e.sound):'10',vol:Math.min(.4,Math.max(.03,+e.vol||.18))}}
 }
 // Bản sạch để lưu (bỏ blob: video cục bộ vì chỉ có giá trị trên máy này)
 function publicState(){
@@ -883,7 +888,7 @@ async function saveFeed(kind,url,oldId){
 }
 const normFeedURL=u=>String(u||'').trim().replace(/^webcal:\/\//i,'https://');
 async function geocode(name){
- const r=await fetch('https://geocoding-api.open-meteo.com/v1/search?count=1&language=vi&format=json&name='+encodeURIComponent(name));
+ const r=await fetchT('https://geocoding-api.open-meteo.com/v1/search?count=1&language=vi&format=json&name='+encodeURIComponent(name),9000);
  const j=await r.json();if(!j.results||!j.results.length)throw new Error('không có kết quả');return j.results[0];
 }
 
@@ -986,7 +991,7 @@ async function sendEmergency(){
  const t=$('#em_title').value.trim(),m=$('#em_msg').value.trim(),lv=$('#em_lv').value,mins=Math.max(0,+$('#em_min').value||0);
  if(!t&&!m)return alert('Nhập tiêu đề hoặc nội dung thông báo.');
  if(!confirm('Phát thông báo khẩn cấp lên TẤT CẢ màn hình ngay bây giờ?'))return;
- S.emergency={on:true,title:t,msg:m,level:lv,at:new Date().toISOString(),until:mins?new Date(Date.now()+mins*6e4).toISOString():null,by:currentUser.u};
+ S.emergency={on:true,title:t,msg:m,level:lv,at:new Date().toISOString(),until:mins?new Date(Date.now()+mins*6e4).toISOString():null,by:currentUser.u,sound:$('#em_snd').value,vol:+$('#em_vol').value};
  clearTimeout(saveTimer);saveTimer=null;await saveToCloud();
  $('#em_modal').close();updateEmergencyUI();
 }
@@ -994,11 +999,60 @@ async function stopEmergency(){
  if(!can('settings'))return;if(!confirm('Tắt thông báo khẩn cấp?'))return;
  S.emergency={on:false};clearTimeout(saveTimer);saveTimer=null;await saveToCloud();updateEmergencyUI();
 }
+/* ===== ÂM THANH CẢNH BÁO (Web Audio – không cần file, chạy được khi mất mạng) ===== */
+var actx=null;
+function audioCtx(){if(!actx){const C=window.AudioContext||window.webkitAudioContext;if(!C)return null;try{actx=new C()}catch(e){return null}}return actx}
+function audioReady(){const c=audioCtx();return !!(c&&c.state==='running')}
+function unlockAudio(){const c=audioCtx();if(c&&c.state==='suspended')c.resume().then(()=>{updateSoundHint();if(emgNeedPlay)handleEmergencySound(true)}).catch(()=>{});updateSoundHint()}
+['pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,unlockAudio,{passive:true}));
+function tone(c,t,f,d,vol,type){const o=c.createOscillator(),g=c.createGain();o.type=type||'sine';o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.025);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+d+.05)}
+// Mỗi mức một kiểu âm: [thời điểm(s), tần số(Hz), độ dài(s)]
+const ALERT_PATTERNS={
+ red:[[0,880,.3],[.34,660,.3],[.78,880,.3],[1.12,660,.3],[1.56,880,.3],[1.9,660,.42]], // còi cao–thấp ×3
+ orange:[[0,784,.45],[.42,659,.45],[.84,523,.75]],                                     // chuông 3 nốt đi xuống
+ blue:[[0,659,.6],[.5,523,.9]]                                                          // ding-dong
+};
+// Còi khẩn cấp (đỏ): hi–lo dồn dập ×6 → tiếng hú vút lên → hi–lo ×6. Tiếng dày (vuông + sin), có lọc chói và nén chống rè.
+function sirenVoice(c,dst,t,f,d,V){for(const [type,mul,k] of [['square',1,.32],['sine',1,.6],['sine',.5,.35]]){const o=c.createOscillator(),g=c.createGain();o.type=type;o.frequency.setValueAtTime(f*mul,t);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(V*k,t+.012);g.gain.setValueAtTime(V*k,t+d-.03);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(dst);o.start(t);o.stop(t+d+.02)}}
+function siren(c,t,v){
+ const bus=c.createGain(),lp=c.createBiquadFilter(),comp=c.createDynamicsCompressor();
+ lp.type='lowpass';lp.frequency.value=3200;lp.Q.value=.7;comp.threshold.value=-14;comp.ratio.value=4;
+ bus.connect(lp);lp.connect(comp);comp.connect(c.destination);
+ const V=Math.min(.55,v*1.6);let x=t;
+ for(let i=0;i<6;i++){sirenVoice(c,bus,x,i%2?740:988,.2,V);x+=.23}
+ const o=c.createOscillator(),g=c.createGain(),o2=c.createOscillator(),g2=c.createGain();
+ o.type='sawtooth';o2.type='sine';
+ for(const [osc,gg,k] of [[o,g,.45],[o2,g2,.7]]){osc.frequency.setValueAtTime(600,x+.05);osc.frequency.exponentialRampToValueAtTime(1300,x+.75);gg.gain.setValueAtTime(.0001,x+.05);gg.gain.exponentialRampToValueAtTime(V*k,x+.12);gg.gain.setValueAtTime(V*k,x+.66);gg.gain.exponentialRampToValueAtTime(.0001,x+.8);osc.connect(gg);gg.connect(bus);osc.start(x+.05);osc.stop(x+.85)}
+ x+=.95;
+ for(let i=0;i<6;i++){sirenVoice(c,bus,x,i%2?740:988,.2,V);x+=.23}
+}
+function playAlert(level,vol){const c=audioCtx();if(!c||c.state!=='running')return false;const t=c.currentTime+.05,v=Math.min(.4,Math.max(.03,+vol||.18));
+ if(level!=='orange'&&level!=='blue'){siren(c,t,v);return true}
+ for(const [dt,f,d] of (ALERT_PATTERNS[level]||ALERT_PATTERNS.red)){tone(c,t+dt,f,d,v,'sine');tone(c,t+dt,f*2,d*.6,v*.22,'triangle')}return true}
+function testAlert(){unlockAudio();const c=audioCtx();const go=()=>playAlert($('#em_lv').value,$('#em_vol').value);if(c&&c.state!=='running')c.resume().then(go);else go()}
+var emgSoundAt=null,emgSoundTimer=null,emgSoundStart=0,emgNeedPlay=false;
+function stopEmergencySound(keepKey){clearInterval(emgSoundTimer);emgSoundTimer=null;emgNeedPlay=false;if(!keepKey)emgSoundAt=null}
+function handleEmergencySound(retry){
+ const e=S.emergency,on=emergencyActive()&&!$('#player').hidden&&!previewOnly;
+ if(!on||!e.sound||e.sound==='off'){stopEmergencySound();updateSoundHint();return}
+ if(emgSoundAt===e.at&&!retry)return; // thông báo này đã được xử lý
+ if(emgSoundAt!==e.at){stopEmergencySound();emgSoundAt=e.at;emgSoundStart=Date.now()}
+ const ring=()=>{
+  if(!emergencyActive()||S.emergency.at!==emgSoundAt||Date.now()-emgSoundStart>10*60e3){stopEmergencySound(true);return}
+  emgNeedPlay=!playAlert(S.emergency.level,S.emergency.vol);updateSoundHint();
+ };
+ ring();
+ const rep=+e.sound;if(rep>0&&!emgSoundTimer)emgSoundTimer=setInterval(ring,rep*1000);
+}
+// Trình duyệt chặn âm thanh cho tới khi có 1 lần chạm/bấm → nhắc trên Tivi
+function updateSoundHint(){const h=$('#snd_hint');if(!h)return;const show=!$('#player').hidden&&!previewOnly&&!audioReady();h.hidden=!show;h.classList.toggle('urgent',show&&emergencyActive())}
+
 function renderEmergency(){
  const e=S.emergency,el=$('#emg'),lv=['red','orange','blue'].includes(e.level)?e.level:'red';
  el.className='emg '+lv;
  el.innerHTML=`<div class="emg-ic">${lv==='blue'?'📣':'🚨'}</div><div class="emg-t">${esc(e.title)}</div><div class="emg-m">${esc(e.msg)}</div><div class="emg-time">Phát lúc ${new Date(e.at).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}</div>`;
  el.hidden=false;
+ handleEmergencySound();
 }
 function updateEmergencyUI(){
  const a=emergencyActive(),bar=$('#em_bar');
@@ -1006,15 +1060,27 @@ function updateEmergencyUI(){
  if(a)$('#em_bar_t').textContent=(S.emergency.title||S.emergency.msg||'')+(S.emergency.until?' (đến '+new Date(S.emergency.until).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})+')':'');
  $('#em_bar_btn').style.display=can('settings')?'':'none';
  if(!$('#player').hidden&&!previewOnly){const shown=!$('#emg').hidden;if(a!==shown)show();else if(a)renderEmergency()}
+ if(!a)stopEmergencySound();
+ updateSoundHint();
 }
 setInterval(updateEmergencyUI,5000);
 
 /* ================= BỘ NHỚ OFFLINE (IndexedDB) ================= */
-const IDB=(()=>{let dbp=null;
- const db=()=>dbp||(dbp=new Promise((res,rej)=>{if(!window.indexedDB)return rej(new Error('no idb'));const r=indexedDB.open('aron_signage',1);r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains('kv'))d.createObjectStore('kv');if(!d.objectStoreNames.contains('media'))d.createObjectStore('media')};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}));
- const op=async(st,mode,fn)=>{const d=await db();return new Promise((res,rej)=>{const t=d.transaction(st,mode),q=fn(t.objectStore(st));t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error)})};
- return{get:(st,k)=>op(st,'readonly',s=>s.get(k)),set:(st,k,v)=>op(st,'readwrite',s=>s.put(v,k)),del:(st,k)=>op(st,'readwrite',s=>s.delete(k)),keys:st=>op(st,'readonly',s=>s.getAllKeys())};
+// Một số trình duyệt trên Tivi xử lý IndexedDB không chuẩn (treo, không phản hồi) → giới hạn thời gian chờ và tự tắt nếu hỏng
+const withTimeout=(pr,ms,msg)=>Promise.race([pr,new Promise((_,rej)=>setTimeout(()=>rej(new Error(msg||'Hết thời gian chờ')),ms))]);
+const IDB=(()=>{let dbp=null,broken=false;
+ const open=()=>new Promise((res,rej)=>{try{if(!window.indexedDB)return rej(new Error('no idb'));const r=indexedDB.open('aron_signage',1);if(!r||typeof r!=='object'||!('onsuccess' in r))return rej(new Error('idb lỗi'));r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains('kv'))d.createObjectStore('kv');if(!d.objectStoreNames.contains('media'))d.createObjectStore('media')};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);r.onblocked=()=>rej(new Error('idb bị chặn'))}catch(e){rej(e)}});
+ const db=()=>{if(broken)return Promise.reject(new Error('idb tắt'));return dbp||(dbp=withTimeout(open(),2500,'idb không phản hồi').catch(e=>{broken=true;console.warn('IndexedDB không dùng được, chạy không có bộ nhớ offline:',e.message);throw e}))};
+ const op=async(st,mode,fn)=>{const d=await db();return withTimeout(new Promise((res,rej)=>{const t=d.transaction(st,mode),q=fn(t.objectStore(st));t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error)}),st==='media'&&mode==='readwrite'?30000:4000,'idb chậm')};
+ return{get:(st,k)=>op(st,'readonly',s=>s.get(k)),set:(st,k,v)=>op(st,'readwrite',s=>s.put(v,k)),del:(st,k)=>op(st,'readwrite',s=>s.delete(k)),keys:st=>op(st,'readonly',s=>s.getAllKeys()),get ok(){return !broken}};
 })();
+// fetch có giới hạn thời gian chờ: mạng chặn/treo sẽ báo lỗi thay vì "Đang tải" mãi
+async function fetchT(url,ms,opt){
+ const ac=window.AbortController?new AbortController():null,t=setTimeout(()=>{try{ac&&ac.abort()}catch(_){}},ms||9000);
+ try{return await withTimeout(fetch(url,Object.assign({},opt||{},ac?{signal:ac.signal}:{})),(ms||9000)+500,'Hết thời gian chờ kết nối')}
+ catch(e){if(e&&e.name==='AbortError')throw new Error('Hết thời gian chờ kết nối');throw e}
+ finally{clearTimeout(t)}
+}
 const mediaURL=new Map();
 const cachedURL=u=>(u&&mediaURL.get(u))||u;
 let precaching=false;
@@ -1030,7 +1096,7 @@ async function precacheMedia(){
   for(const u of want){
    if(mediaURL.has(u))continue;
    let b=null;try{b=await IDB.get('media',u)}catch(_){}
-   if(!b&&navigator.onLine){try{const r=await fetch(u,{mode:'cors'});if(r.ok){b=await r.blob();try{await IDB.set('media',u,b)}catch(_){}}}catch(_){}}
+   if(!b&&navigator.onLine){try{const r=await fetchT(u,120000,{mode:'cors'});if(r.ok){b=await r.blob();try{await IDB.set('media',u,b)}catch(_){}}}catch(_){}}
    if(b)mediaURL.set(u,URL.createObjectURL(b));
   }
   // Dọn file không còn dùng (chỉ khi đã có dữ liệu mới nhất từ Cloud)
@@ -1038,13 +1104,19 @@ async function precacheMedia(){
  }finally{precaching=false}
 }
 // Lấy dữ liệu ngoài có cache: online → làm mới theo chu kỳ; offline/lỗi → dùng bản đã lưu
+const memCache=new Map(); // dự phòng khi IndexedDB không dùng được
 async function cachedFetch(key,ttlMin,fetcher){
- let c=null;try{c=await IDB.get('kv','c:'+key)}catch(_){}
+ let c=memCache.get(key)||null;
+ if(!c){try{c=await IDB.get('kv','c:'+key)||null}catch(_){}}
  if(c&&Date.now()-c.t<ttlMin*6e4)return{data:c.d,t:c.t};
- try{const d=await fetcher();try{await IDB.set('kv','c:'+key,{d,t:Date.now()})}catch(_){}return{data:d,t:Date.now()}}
+ try{const d=await fetcher(),rec={d,t:Date.now()};memCache.set(key,rec);IDB.set('kv','c:'+key,rec).catch(()=>{});return{data:d,t:rec.t}}
  catch(e){if(c)return{data:c.d,t:c.t,stale:true};throw e}
 }
-const feedText=id=>cachedFetch('feed:'+id,10,async()=>{const r=await fetch(SB_URL+'/functions/v1/feed?id='+encodeURIComponent(id));if(!r.ok)throw new Error((await r.text().catch(()=>''))||('HTTP '+r.status));return r.text()});
+// Lỗi mạng → câu báo dễ hiểu
+function netErr(e,host){const m=String((e&&e.message)||e||'');
+ if(/thời gian chờ|Failed to fetch|NetworkError|Load failed|network/i.test(m))return`Tivi không kết nối được tới ${host}. Kiểm tra mạng/tường lửa của Tivi (cần cho phép truy cập ${host}).`;
+ return m}
+const feedText=id=>cachedFetch('feed:'+id,10,async()=>{const r=await fetchT(SB_URL+'/functions/v1/feed?id='+encodeURIComponent(id),9000);if(!r.ok)throw new Error((await r.text().catch(()=>''))||('HTTP '+r.status));return r.text()});
 const hhmm=d=>d.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
 const updLine=(r)=>`<div class="upd">${r.stale?'📴 Dữ liệu offline · ':''}Cập nhật ${hhmm(new Date(r.t))}</div>`;
 
@@ -1119,7 +1191,7 @@ async function loadCalendar(s,tok){
   const rows=evs.map(e=>{const cur=!e.allDay&&e.start<=now&&e.end>now,past=!e.allDay&&e.end<=now;
    return`<div class="mr ${cur?'now':''} ${past?'past':''}"><b>${e.allDay?'Cả ngày':hhmm(e.start)+'–'+hhmm(e.end)}</b><span>${esc(e.summary||'(Không tiêu đề)')}${cur?' <em class="live">● Đang diễn ra</em>':''}</span><i>${esc(e.location||'')}</i></div>`}).join('');
   box.innerHTML=(rows||'<div class="mid" style="text-align:center">Hôm nay không có cuộc họp</div>')+updLine(r);
- }catch(e){if(tok===renderTok)box.innerHTML=`<div class="mid" style="text-align:center">⚠️ Không tải được lịch</div><div class="sm2" style="text-align:center">${esc(e.message||e)}</div>`}
+ }catch(e){if(tok===renderTok)box.innerHTML=`<div class="mid" style="text-align:center">⚠️ Không tải được lịch</div><div class="sm2" style="text-align:center">${esc(netErr(e,'celqybfrjzrxvhlhtrqo.supabase.co'))}</div>`}
 }
 
 /* ================= THỜI TIẾT (Open-Meteo) ================= */
@@ -1130,12 +1202,12 @@ async function loadWeather(s,tok){
  try{
   if(s.wlat==null)throw new Error('Chưa chọn thành phố');
   const url=`https://api.open-meteo.com/v1/forecast?latitude=${+s.wlat}&longitude=${+s.wlon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=5`;
-  const r=await cachedFetch('wx:'+s.wlat+','+s.wlon,30,async()=>{const x=await fetch(url);if(!x.ok)throw new Error('HTTP '+x.status);return x.json()});
+  const r=await cachedFetch('wx:'+s.wlat+','+s.wlon,30,async()=>{const x=await fetchT(url,8000);if(!x.ok)throw new Error('Máy chủ thời tiết trả lỗi '+x.status);return x.json()});
   if(tok!==renderTok)return;
   const c=r.data.current,d=r.data.daily,[ic,tx]=wmo(c.weather_code);
   const days=d.time.map((t,i)=>{const dt=new Date(t+'T00:00');const[di]=wmo(d.weather_code[i]);return`<div class="wx-d"><div class="wx-dn">${i===0?'Hôm nay':dt.toLocaleDateString('vi-VN',{weekday:'short'})}</div><div class="wx-di">${di}</div><div class="wx-dt"><b>${Math.round(d.temperature_2m_max[i])}°</b> ${Math.round(d.temperature_2m_min[i])}°</div><div class="wx-dp">💧${d.precipitation_probability_max[i]??0}%</div></div>`}).join('');
   box.innerHTML=`<div class="wx-now"><div class="wx-ic">${ic}</div><div style="text-align:left"><div class="wx-t">${Math.round(c.temperature_2m)}°C</div><div class="mid">${tx}</div><div class="sm2">Cảm giác ${Math.round(c.apparent_temperature)}° · 💧 ${c.relative_humidity_2m}% · 💨 ${Math.round(c.wind_speed_10m)} km/h</div></div></div><div class="wx-days">${days}</div>${updLine(r)}`;
- }catch(e){if(tok===renderTok)box.innerHTML=`<div class="mid">⚠️ Không tải được thời tiết</div><div class="sm2">${esc(e.message||e)}</div>`}
+ }catch(e){if(tok===renderTok)box.innerHTML=`<div class="mid">⚠️ Không tải được thời tiết</div><div class="sm2" style="max-width:70vw;margin:1vw auto 0">${esc(netErr(e,'api.open-meteo.com'))}</div>`;console.warn('Thời tiết:',e)}
 }
 
 /* ================= KPI ================= */
@@ -1154,7 +1226,7 @@ async function loadKPI(s,tok){
   else rows=kpiRows((s.extra||'').split('\n').map(l=>l.split('|')));
   if(tok!==renderTok)return;
   box.innerHTML=(rows.length?kpiHTML(rows):'<div class="mid">Chưa có dữ liệu KPI</div>')+(r?updLine(r):'');
- }catch(e){if(tok===renderTok)box.innerHTML=`<div class="mid">⚠️ Không tải được KPI</div><div class="sm2">${esc(e.message||e)}</div>`}
+ }catch(e){if(tok===renderTok)box.innerHTML=`<div class="mid">⚠️ Không tải được KPI</div><div class="sm2">${esc(netErr(e,'celqybfrjzrxvhlhtrqo.supabase.co'))}</div>`}
 }
 
 /* ================= PLAYER ================= */
@@ -1197,7 +1269,7 @@ function show(){
  const tok=++renderTok;
  // Thông báo khẩn cấp đè lên mọi nội dung
  if(!previewOnly&&emergencyActive()){$('#stage').innerHTML='';renderEmergency();tm=setTimeout(show,5000);return}
- $('#emg').hidden=true;
+ $('#emg').hidden=true;stopEmergencySound();
  L=previewOnly?[previewOnly]:active();const sp=S.lay=='side';$('#player').classList.toggle('sp',sp);
  if(sp){
   renderSide();
@@ -1233,7 +1305,8 @@ function play(previewSlide){
  previewOnly=(previewSlide&&typeof previewSlide==='object'&&typeof previewSlide.type==='string'&&!(previewSlide instanceof Event))?previewSlide:null;cur=0;
  $('#preview_tag').hidden=!previewOnly;
  $('#co').textContent=S.company;if(safeImg(S.logo)){$('#player-logo').src=S.logo;$('#player-logo').hidden=false}else{$('#player-logo').hidden=true}$('#tk span').textContent=S.ticker||'';$('#player').hidden=false;clk();clearInterval(clkInt);clkInt=setInterval(clk,20000);
- if(!previewOnly){(document.documentElement.requestFullscreen||(()=>{})).call(document.documentElement).catch?.(()=>{});precacheMedia()}
+ if(!previewOnly){(document.documentElement.requestFullscreen||(()=>{})).call(document.documentElement).catch?.(()=>{});precacheMedia();unlockAudio()}
+ updateSoundHint();
  show()}
 function previewIdx(i){const s=S.slides[i];if(s)play(s)}
 function previewForm(){
@@ -1251,7 +1324,7 @@ function stop(){
   $('#pin_modal').showModal();
   return;
  }
- previewOnly=null;renderTok++;
+ previewOnly=null;renderTok++;stopEmergencySound();
  clearTimeout(tm);if(cdInt){clearInterval(cdInt);cdInt=null}$('#player').hidden=true;$('#stage').innerHTML='';$('#emg').hidden=true;if(document.fullscreenElement)document.exitFullscreen();
 }
 
